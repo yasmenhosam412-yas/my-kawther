@@ -1,0 +1,116 @@
+[
+  {
+    "color": "red",
+    "type": "fox",
+    "size": "nano", 
+    "name": "Otto"
+  },
+  {
+    "color": "yellow",
+    "type": "rubber-duck",
+    "size": "nano",
+    "name": "Mrs Beak"
+  },
+  {
+    "color": "gray",
+    "type": "bunny",
+    "size": "nano",
+    "name": "Lucy"
+  },
+  {
+    "color": "black",
+    "type": "panda",
+    "size": "nano",
+    "name": "Hana"
+  },
+  {
+    "color": "white",
+    "type": "bunny",
+    "size": "nano",
+    "name": "Molly"
+  },
+  {
+    "color": "gray",
+    "type": "cockatiel",
+    "size": "nano",
+    "name": "Walt"
+  },
+  {
+    "color": "yellow",
+    "type": "rubber-duck",
+    "size": "nano",
+    "name": "Lucy"
+  },
+  {
+    "color": "black",
+    "type": "panda",
+    "size": "nano",
+    "name": "Coco"
+  },
+  {
+    "color": "white",
+    "type": "bunny",
+    "size": "nano",
+    "name": "Penny"
+  },
+  {
+    "color": "yellow",
+    "type": "rubber-duck",
+    "size": "nano",
+    "name": "Ace"
+  },
+  {
+    "color": "white",
+    "type": "bunny",
+    "size": "nano",
+    "name": "Daisy"
+  },
+  {
+    "color": "yellow",
+    "type": "rubber-duck",
+    "size": "nano",
+    "name": "Dillard"
+  },
+  {
+    "color": "green",
+    "type": "frog",
+    "size": "nano",
+    "name": "Pebbles"
+  },
+  {
+    "color": "magical",
+    "type": "horse",
+    "size": "nano",
+    "name": "Artax"
+  },
+  {
+    "color": "white",
+    "type": "chicken",
+    "size": "nano",
+    "name": "Pip"
+  },
+  {
+    "color": "yellow",
+    "type": "rubber-duck",
+    "size": "nano",
+    "name": "Buddy"
+  },
+  {
+    "color": "green",
+    "type": "deno",
+    "size": "nano",
+    "name": "Dee Dee"
+  },
+  {
+    "color": "magical",
+    "type": "horse",
+    "size": "nano",
+    "name": "Rusty"
+  },
+  {
+    "color": "yellow",
+    "type": "clippy",
+    "size": "nano",
+    "name": "Coco"
+  }
+]

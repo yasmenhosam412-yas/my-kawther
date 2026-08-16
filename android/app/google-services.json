@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "572371621311",
+    "project_id": "pharm-5b2f5",
+    "storage_bucket": "pharm-5b2f5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572371621311:android:081fd012ab85490ae87d0a",
+        "android_client_info": {
+          "package_name": "com.example.elkawther"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQ0p9KhBdxBdDgCwf_uezdFc67XgXp0y4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
