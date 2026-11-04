@@ -1,3 +1,9 @@
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
 class CategoryProductsModel {
   String? status;
   String? message;
@@ -7,8 +13,8 @@ class CategoryProductsModel {
   CategoryProductsModel({this.status, this.message, this.data, this.count});
 
   CategoryProductsModel.fromJson(Map<String, dynamic> json) {
-    status = json['status'];
-    message = json['message'];
+    status = json['status']?.toString();
+    message = json['message']?.toString();
     if (json['data'] != null) {
       data = <CategoryProductsData>[];
       json['data'].forEach((v) {
@@ -45,7 +51,7 @@ class CategoryProductsModelFilter {
 
   CategoryProductsModelFilter.fromJson(Map<String, dynamic> json) {
     status = json['status'];
-    message = json['message'];
+    message = json['message']?.toString();
     if (json['data'] != null) {
       data = <CategoryProductsData>[];
       json['data'].forEach((v) {
@@ -130,22 +136,25 @@ class CategoryProductsData {
 
   CategoryProductsData.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    price = json['price'];
+    price = json['price']?.toString();
     quantity = json['quantity'];
     rate =
         json['rate'] != null ? double.tryParse(json['rate'].toString()) : null;
-    image = json['image'];
+    image = json['image']?.toString();
     brandId = json['brand_id'];
     categoryId = json['category_id'];
-    saleableType = json['saleable_type'];
+    saleableType = json['saleable_type']?.toString();
     saleableId = json['saleable_id'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    name = json['name'];
-    description = json['description'];
+    createdAt = json['created_at']?.toString();
+    updatedAt = json['updated_at']?.toString();
+    name = json['name']?.toString();
+    description = json['description']?.toString();
     isFavorite = json['is_favorite'];
-    imageUrl = json['image_url'];
-    images = json['images']?.cast<String>();
+    imageUrl = json['image_url']?.toString();
+    images =
+        (json['images'] as List<dynamic>?)
+            ?.map((image) => image.toString())
+            .toList();
     averageRating =
         json['average_rating'] != null
             ? double.tryParse(json['average_rating'].toString())
@@ -158,13 +167,13 @@ class CategoryProductsData {
         json['price_after_discount'] != null
             ? double.tryParse(json['price_after_discount'].toString())
             : null;
-    discountPercentage = json['discount_percentage'];
-    categoryName = json['category_name'];
+    discountPercentage = json['discount_percentage']?.toString();
+    categoryName = json['category_name']?.toString();
     finalPrice =
         json['final_price'] != null
             ? double.tryParse(json['final_price'].toString())
             : null;
-    discountType = json['discount_type'];
+    discountType = json['discount_type']?.toString();
     availableSizes =
         (json['available_sizes'] as List?)
             ?.map((x) => AvailableSize.fromJson(x))
@@ -244,15 +253,21 @@ class Saleable {
   });
 
   Saleable.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    discountValue = json['discount_value'];
-    isActive = json['is_active'];
-    date = json['date'];
-    time = json['time'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    startsAt = json['starts_at'];
-    endsAt = json['ends_at'];
+    id = _parseInt(json['id']);
+    discountValue = json['discount_value']?.toString();
+    final activeValue = json['is_active'];
+    isActive =
+        activeValue is bool
+            ? (activeValue ? 1 : 0)
+            : activeValue is num
+            ? activeValue.toInt()
+            : int.tryParse(activeValue?.toString() ?? '');
+    date = json['date']?.toString();
+    time = json['time']?.toString();
+    createdAt = json['created_at']?.toString();
+    updatedAt = json['updated_at']?.toString();
+    startsAt = json['starts_at']?.toString();
+    endsAt = json['ends_at']?.toString();
   }
 
   Map<String, dynamic> toJson() {
@@ -293,18 +308,12 @@ class AvailableSize {
 
   factory AvailableSize.fromJson(Map<String, dynamic> json) {
     return AvailableSize(
-      id:
-          json['id'] is int
-              ? json['id']
-              : int.tryParse(json['id']?.toString() ?? ''),
+      id: _parseInt(json['id']),
       size: json['size']?.toString(),
       price: _parseToDouble(json['price']),
       originalPrice: _parseToDouble(json['original_price']),
       priceAfterDiscount: _parseToDouble(json['price_after_discount']),
-      stock:
-          json['stock'] is int
-              ? json['stock']
-              : int.tryParse(json['stock']?.toString() ?? ''),
+      stock: _parseInt(json['stock']),
       discountType: json['discount_type']?.toString(),
       discountValue: json['discount_value']?.toString(),
     );
@@ -350,13 +359,13 @@ class SizeModel {
 
   factory SizeModel.fromJson(Map<String, dynamic> json) {
     return SizeModel(
-      id: json['id'],
-      productId: json['product_id'],
-      size: json['size'],
-      price: json['price'],
-      stock: json['stock'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
+      id: _parseInt(json['id']),
+      productId: _parseInt(json['product_id']),
+      size: json['size']?.toString(),
+      price: json['price']?.toString(),
+      stock: _parseInt(json['stock']),
+      createdAt: json['created_at']?.toString(),
+      updatedAt: json['updated_at']?.toString(),
     );
   }
 
@@ -394,13 +403,13 @@ class CategoryModel {
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['id'],
-      parentId: json['parent_id'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
-      image: json['image'],
-      name: json['name'],
-      imageUrl: json['image_url'],
+      id: _parseInt(json['id']),
+      parentId: _parseInt(json['parent_id']),
+      createdAt: json['created_at']?.toString(),
+      updatedAt: json['updated_at']?.toString(),
+      image: json['image']?.toString(),
+      name: json['name']?.toString(),
+      imageUrl: json['image_url']?.toString(),
     );
   }
 

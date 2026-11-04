@@ -2,70 +2,113 @@ import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/toasts/toasts.dart';
-import 'package:elkawther/features/checkout/data/checkout_local_store.dart';
+import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
 import 'package:elkawther/features/profile/models/profile_models.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class AddressesView extends StatelessWidget {
+class AddressesView extends StatefulWidget {
   const AddressesView({super.key});
+
+  @override
+  State<AddressesView> createState() => _AddressesViewState();
+}
+
+class _AddressesViewState extends State<AddressesView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AddressCubit>().getAllAddresses(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final store = CheckoutLocalStore.instance;
 
-    return ListenableBuilder(
-      listenable: store,
-      builder: (context, _) {
-        final addresses = store.addresses;
+    return BlocConsumer<AddressCubit, AddressCubitState>(
+      listener: (context, state) {
+        if (state is AddressErrorState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message.localizedMessage(context))),
+          );
+        }
+      },
+      builder: (context, state) {
+        final addresses = context.watch<AddressCubit>().addresses ?? [];
         return ProfileScaffold(
           title: S.of(context).addressesTitle,
-          subtitle: isAr
-              ? 'عناوين التوصيل والاستلام من الصيدلية'
-              : 'Delivery and pharmacy pickup addresses',
+          subtitle:
+              isAr
+                  ? 'عناوين التوصيل والاستلام من الصيدلية'
+                  : 'Delivery and pharmacy pickup addresses',
           bottom: ProfilePrimaryButton(
             title: S.of(context).addNewAddressButton,
             onPressed: () => Navigator.pushNamed(context, Routes.addNewAddress),
           ),
-          body: addresses.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_off_outlined,
-                          size: 56,
-                          color: AppColors.grey.withOpacity(0.7),
+          body:
+              addresses.isEmpty
+                  ? state is AddressLoadingState
+                      ? const Center(child: CircularProgressIndicator())
+                      : state is AddressErrorState
+                      ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              state.message.localizedMessage(context),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed:
+                                  () => context
+                                      .read<AddressCubit>()
+                                      .getAllAddresses(context),
+                              child: Text(S.of(context).retry),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          S.of(context).noAddressesFound,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.noto14w400.copyWith(
-                            color: AppColors.grey,
-                            fontWeight: FontWeight.w700,
+                      )
+                      : Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.location_off_outlined,
+                                size: 56,
+                                color: AppColors.grey.withOpacity(0.7),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                S.of(context).noAddressesFound,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.noto14w400.copyWith(
+                                  color: AppColors.grey,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      )
+                  : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: addresses.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final address = addresses[index];
+                      return _AddressCard(
+                        address: address,
+                        selected: address.isDefault,
+                      );
+                    },
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: addresses.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final address = addresses[index];
-                    return _AddressCard(
-                      address: address,
-                      selected: address.isDefault,
-                    );
-                  },
-                ),
         );
       },
     );
@@ -80,21 +123,25 @@ class _AddressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPharmacy = address.isPharmacy == true ||
+    final isPharmacy =
+        address.isPharmacy == true ||
         (address.type ?? '').toLowerCase() == 'pharmacy';
-    final color = isPharmacy
-        ? AppColors.teal
-        : (address.type ?? '').toLowerCase() == 'work'
+    final color =
+        isPharmacy
+            ? AppColors.teal
+            : (address.type ?? '').toLowerCase() == 'work'
             ? const Color(0xFF7C3AED)
             : AppColors.primaryColor;
-    final icon = isPharmacy
-        ? Icons.local_pharmacy_rounded
-        : (address.type ?? '').toLowerCase() == 'work'
+    final icon =
+        isPharmacy
+            ? Icons.local_pharmacy_rounded
+            : (address.type ?? '').toLowerCase() == 'work'
             ? Icons.work_outline_rounded
             : Icons.home_rounded;
-    final typeLabel = isPharmacy
-        ? S.of(context).takeFromPharamcy
-        : (address.type ?? '').toLowerCase() == 'work'
+    final typeLabel =
+        isPharmacy
+            ? S.of(context).takeFromPharamcy
+            : (address.type ?? '').toLowerCase() == 'work'
             ? S.of(context).work
             : S.of(context).homeAddress;
 
@@ -103,9 +150,7 @@ class _AddressCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: selected ? color : color.withOpacity(0.08),
-        ),
+        border: Border.all(color: selected ? color : color.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(selected ? 0.14 : 0.08),
@@ -146,10 +191,7 @@ class _AddressCard extends StatelessWidget {
                     arguments: address,
                   );
                 },
-                icon: const Icon(
-                  Icons.edit_outlined,
-                  color: AppColors.grey,
-                ),
+                icon: const Icon(Icons.edit_outlined, color: AppColors.grey),
                 tooltip: S.of(context).edit,
               ),
             ],
@@ -176,7 +218,10 @@ class _AddressCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             onTap: () {
               if (address.id != null) {
-                CheckoutLocalStore.instance.setDefault(address.id!);
+                context.read<AddressCubit>().toggleDefaultAddress(
+                  address.id!,
+                  context,
+                );
               }
             },
             child: Row(
@@ -186,7 +231,10 @@ class _AddressCard extends StatelessWidget {
                   activeColor: color,
                   onChanged: (_) {
                     if (address.id != null) {
-                      CheckoutLocalStore.instance.setDefault(address.id!);
+                      context.read<AddressCubit>().toggleDefaultAddress(
+                        address.id!,
+                        context,
+                      );
                     }
                   },
                 ),
@@ -284,13 +332,13 @@ class _AddressCard extends StatelessWidget {
     );
 
     if (confirmed == true && address.id != null) {
-      CheckoutLocalStore.instance.remove(address.id!);
-      if (context.mounted) {
-        ToastMessage().displayMessageToast(
-          S.of(context).loaded,
-          AppColors.primaryColor,
-        );
-      }
+      if (!context.mounted) return;
+      await context.read<AddressCubit>().deleteAddress(address.id!, context);
+      if (!context.mounted) return;
+      ToastMessage().displayMessageToast(
+        S.of(context).loaded,
+        AppColors.primaryColor,
+      );
     }
   }
 }

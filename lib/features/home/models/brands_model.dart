@@ -1,3 +1,9 @@
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
 class BrandsModel {
   String? status;
   String? message;
@@ -7,15 +13,15 @@ class BrandsModel {
   BrandsModel({this.status, this.message, this.data, this.count});
 
   BrandsModel.fromJson(Map<String, dynamic> json) {
-    status = json['status'];
-    message = json['message'];
+    status = json['status']?.toString();
+    message = json['message']?.toString();
     if (json['data'] != null) {
       data = <BrandsData>[];
       json['data'].forEach((v) {
         data!.add(BrandsData.fromJson(v));
       });
     }
-    count = json['count'];
+    count = _parseInt(json['count']);
   }
 
   Map<String, dynamic> toJson() {
@@ -48,12 +54,12 @@ class BrandsData {
   });
 
   BrandsData.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    image = json['image'];
-    name = json['name'];
-    imageUrl = json['image_url'];
+    id = _parseInt(json['id']);
+    createdAt = json['created_at']?.toString();
+    updatedAt = json['updated_at']?.toString();
+    image = json['image']?.toString();
+    name = json['name']?.toString();
+    imageUrl = json['image_url']?.toString();
   }
 
   Map<String, dynamic> toJson() {

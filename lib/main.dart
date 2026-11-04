@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:app_links/app_links.dart';
 import 'package:elkawther/core/di/service_locator.dart';
 import 'package:elkawther/core/providers/locale_provider.dart';
@@ -9,12 +8,10 @@ import 'package:elkawther/core/services/secure_storage_helper.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/utils/bloc_observer.dart';
 import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
-import 'package:elkawther/features/auth/cubit/account_delete_cubit.dart';
 import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
 import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
-import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/notifications/cubit/notification_cubit.dart';
 import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
 import 'package:elkawther/features/profile/cubit/reviews_cubit.dart';
@@ -39,17 +36,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('Background message received: ${message.notification?.title}');
 }
 
-class _AppHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..userAgent = 'ElKawtherPharmacy/1.0 (Flutter; catalog images)';
-  }
-}
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  HttpOverrides.global = _AppHttpOverrides();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await initLocalNotifications();
@@ -78,6 +66,7 @@ Future<void> main() async {
   Bloc.observer = MyBlocObserver();
   await setupServiceLocator();
 
+
   final localeProvider = LocaleProvider();
   await localeProvider.loadLocale();
   await S.load(localeProvider.locale);
@@ -85,15 +74,14 @@ Future<void> main() async {
   runApp(
     MultiBlocProvider(
       providers: [
-        BlocProvider<AuthCubit>(create: (_) => getIt<AuthCubit>()..loadUser()),
+        BlocProvider<AuthCubit>(create: (_) => getIt<AuthCubit>()),
         BlocProvider<FavouriteCubit>(create: (_) => getIt<FavouriteCubit>()),
         BlocProvider<AddressCubit>(create: (_) => getIt<AddressCubit>()),
         BlocProvider<CartCubit>(create: (_) => getIt<CartCubit>()),
-        BlocProvider<HomeCubit>(create: (_) => HomeCubit(const HomeState())),
+        BlocProvider<HomeCubit>(create: (_) => getIt<HomeCubit>()),
         BlocProvider<ReviewCubit>(create: (_) => getIt<ReviewCubit>()),
         BlocProvider<ProfileCubit>(create: (_) => getIt<ProfileCubit>()),
         BlocProvider(create: (_) => getIt<NotificationCubit>()),
-        BlocProvider(create: (_) => getIt<AccountDeleteCubit>()),
       ],
       child: ChangeNotifierProvider.value(
         value: localeProvider,
@@ -253,7 +241,7 @@ class _MyAppState extends State<MyApp> {
           (context, child) => MaterialApp(
             navigatorKey: navigatorKey,
             debugShowCheckedModeBanner: false,
-            initialRoute: Routes.onboarding,
+            initialRoute: Routes.splash,
             onGenerateRoute: RouteGenerator.generateRoute,
             title: 'El Kawther',
             theme: ThemeData(

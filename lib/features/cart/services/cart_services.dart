@@ -24,7 +24,7 @@ class CartServices {
       }
 
       final response = await _dio.post(
-        "/api/v1/user/cart",
+        "/api/user/cart",
         data: {"product_id": id, "quantity": quantity, "product_size": size},
         options: Options(
           headers: {
@@ -57,10 +57,12 @@ class CartServices {
   Future<void> removeItemFromCart(int id) async {
     final token = await storageHelper.safeRead('token');
 
-    if (token == null) return;
+    if (token == null || token.isEmpty) {
+      throw const Errors(message: "User not authenticated");
+    }
 
     await _dio.delete(
-      "/api/v1/user/cart/$id",
+      "/api/user/cart/$id",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -73,10 +75,10 @@ class CartServices {
   Future<List<CartModel>> getCart() async {
     final token = await storageHelper.safeRead('token');
 
-    if (token == null) return [];
+    if (token == null || token.isEmpty) return [];
 
     final response = await _dio.get(
-      "/api/v1/user/cart?limit=10&offset=0&sort=ASC&sortBy=id",
+      "/api/user/cart",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -85,22 +87,31 @@ class CartServices {
       ),
     );
 
-    final List<dynamic> data = response.data['data'] ?? [];
+    final responseData = response.data;
+    final data =
+        responseData is Map<String, dynamic>
+            ? responseData['data']
+            : responseData;
+    if (data is! List) {
+      throw const FormatException('Cart response data must be a list');
+    }
 
-    return data.map((item) => CartModel.fromJson(item)).toList();
+    return data
+        .map((item) => CartModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   Future<Cubon> applyCubon(String coupon) async {
     final token = await storageHelper.safeRead('token');
 
-    if (token == null) {
+    if (token == null || token.isEmpty) {
       throw Exception("User not authenticated");
     }
 
     try {
       final response = await _dio.post(
-        "/api/v1/user/cart/apply-coupon",
-        data: FormData.fromMap({"coupon": coupon}),
+        "/api/user/cart/apply-coupon",
+        data: {"coupon": coupon},
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -109,7 +120,12 @@ class CartServices {
         ),
       );
 
-      final data = response.data;
+      final responseData = response.data;
+      final data =
+          responseData is Map<String, dynamic> &&
+                  responseData['data'] is Map<String, dynamic>
+              ? responseData['data'] as Map<String, dynamic>
+              : responseData as Map<String, dynamic>;
 
       if (data["success"] == true) {
         return Cubon.fromJson(data);
@@ -128,12 +144,12 @@ class CartServices {
   ) async {
     final token = await storageHelper.safeRead('token');
 
-    if (token == null) {
+    if (token == null || token.isEmpty) {
       return const Left(Errors(message: "User not authenticated"));
     }
 
     final response = await _dio.post(
-      "/api/v1/user/cart/update-quantity",
+      "/api/user/cart/update-quantity",
       data: {"product_id": id, "operation": operation},
       options: Options(
         headers: {
@@ -145,7 +161,13 @@ class CartServices {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return Right(ProductData.fromJson(response.data));
+      final responseData = response.data;
+      final data =
+          responseData is Map<String, dynamic> &&
+                  responseData['data'] is Map<String, dynamic>
+              ? responseData['data'] as Map<String, dynamic>
+              : responseData as Map<String, dynamic>;
+      return Right(ProductData.fromJson(data));
     } else {
       final errorMessage =
           response.data is Map
@@ -166,7 +188,7 @@ class CartServices {
     try {
       final token = await storageHelper.safeRead('token');
 
-      if (token == null) {
+      if (token == null || token.isEmpty) {
         return const Left(Errors(message: "User not authenticated"));
       }
 
@@ -183,7 +205,7 @@ class CartServices {
       });
 
       final response = await _dio.post(
-        "/api/v1/user/orders",
+        "/api/user/orders",
         data: formData,
         options: Options(
           headers: {
@@ -196,18 +218,20 @@ class CartServices {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return Right(OrderModel.fromJson(response.data));
-      } else if (response.statusCode == 422) {
-        return const Left(
-          Errors(
-            message: "المدينة غير معروفة في دول مصاريف التوصيل",
-            statusCode: 422,
-          ),
-        );
+        final responseData = response.data;
+        final orderData =
+            responseData is Map<String, dynamic> &&
+                    responseData['data'] is Map<String, dynamic>
+                ? responseData['data'] as Map<String, dynamic>
+                : responseData as Map<String, dynamic>;
+        return Right(OrderModel.fromJson(orderData));
       } else {
-        return Left(
-          Errors(message: "Unexpected error", statusCode: response.statusCode),
-        );
+        final message =
+            response.data is Map
+                ? (response.data['message']?.toString() ??
+                    'Could not place the order')
+                : 'Could not place the order';
+        return Left(Errors(message: message, statusCode: response.statusCode));
       }
     } on DioException catch (e) {
       return Left(Errors.fromDioError(e));

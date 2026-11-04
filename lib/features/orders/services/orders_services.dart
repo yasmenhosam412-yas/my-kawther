@@ -143,7 +143,7 @@ class OrdersServices {
   Future<List<ReviewData>> getProductReview(int id) async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.get(
-      "/api/v1/user/products/$id/reviews",
+      "/api/user/products/$id/reviews",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -182,7 +182,7 @@ class Review {
       productId: json['product_id'],
       userId: json['user_id'],
       rate: json['rate'],
-      review: json['review'],
+      review: json['review']?.toString() ?? '',
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
@@ -226,7 +226,7 @@ class ReviewData {
   final int id;
   final int userId;
   final int rate;
-  final String review;
+  final String? review;
   final DateTime createdAt;
   final User user;
 
@@ -244,7 +244,7 @@ class ReviewData {
       id: json['id'],
       userId: json['user_id'],
       rate: json['rate'],
-      review: json['review'],
+      review: json['review']?.toString(),
       createdAt: DateTime.parse(json['created_at']),
       user: User.fromJson(json['user']),
     );

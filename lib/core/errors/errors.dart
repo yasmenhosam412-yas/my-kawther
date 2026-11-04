@@ -77,7 +77,11 @@ class Errors extends Equatable {
     if (e.response != null &&
         e.response?.data != null &&
         e.response?.data is Map<String, dynamic>) {
-      return Errors.fromJson(e.response!.data);
+      final error = Errors.fromJson(e.response!.data);
+      return Errors(
+        message: error.message,
+        statusCode: error.statusCode ?? e.response?.statusCode,
+      );
     }
 
     switch (e.type) {
@@ -94,9 +98,16 @@ class Errors extends Equatable {
       case DioExceptionType.badResponse:
         if (e.response?.data != null &&
             e.response!.data is Map<String, dynamic>) {
-          return Errors.fromJson(e.response!.data);
+          final error = Errors.fromJson(e.response!.data);
+          return Errors(
+            message: error.message,
+            statusCode: error.statusCode ?? e.response?.statusCode,
+          );
         }
-        return const Errors(message: "badResponse");
+        return Errors(
+          message: "badResponse",
+          statusCode: e.response?.statusCode,
+        );
       case DioExceptionType.unknown:
       default:
         return const Errors(message: "unexpectedNetworkError");

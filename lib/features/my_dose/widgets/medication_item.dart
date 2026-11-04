@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/routes/routes.dart';
@@ -44,16 +45,17 @@ class _MedicationItemState extends State<MedicationItem> {
   void _showDeleteDialog() {
     showDialog(
       context: context,
-      builder: (_) => DeleteDoseDialog(
-        onDeleteForToday: () {
-          Navigator.of(context).pop();
-          widget.onDeleteForToday();
-        },
-        onDeleteAll: () {
-          Navigator.of(context).pop();
-          widget.onDeleteAll();
-        },
-      ),
+      builder:
+          (_) => DeleteDoseDialog(
+            onDeleteForToday: () {
+              Navigator.of(context).pop();
+              widget.onDeleteForToday();
+            },
+            onDeleteAll: () {
+              Navigator.of(context).pop();
+              widget.onDeleteAll();
+            },
+          ),
     );
   }
 
@@ -94,9 +96,10 @@ class _MedicationItemState extends State<MedicationItem> {
       background: Container(
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Directionality.of(context) == ui.TextDirection.rtl
-            ? Alignment.centerLeft
-            : Alignment.centerRight,
+        alignment:
+            Directionality.of(context) == ui.TextDirection.rtl
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
         decoration: BoxDecoration(
           color: const Color(0xFFE44A4A),
           borderRadius: BorderRadius.circular(20),
@@ -109,7 +112,10 @@ class _MedicationItemState extends State<MedicationItem> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: _allTaken ? AppColors.teal.withOpacity(0.28) : AppColors.lightDarker,
+            color:
+                _allTaken
+                    ? AppColors.teal.withOpacity(0.28)
+                    : AppColors.lightDarker,
           ),
           boxShadow: [
             BoxShadow(
@@ -219,14 +225,16 @@ class _MedicationItemState extends State<MedicationItem> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Material(
-                        color: taken
-                            ? AppColors.teal.withOpacity(0.08)
-                            : const Color(0xFFF5FAFD),
+                        color:
+                            taken
+                                ? AppColors.teal.withOpacity(0.08)
+                                : const Color(0xFFF5FAFD),
                         borderRadius: BorderRadius.circular(14),
                         child: InkWell(
-                          onTap: taken
-                              ? null
-                              : () => widget.onMarkAsTaken(timeModel),
+                          onTap:
+                              taken
+                                  ? null
+                                  : () => widget.onMarkAsTaken(timeModel),
                           borderRadius: BorderRadius.circular(14),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -239,14 +247,14 @@ class _MedicationItemState extends State<MedicationItem> {
                                   width: 28,
                                   height: 28,
                                   decoration: BoxDecoration(
-                                    color: taken
-                                        ? AppColors.teal
-                                        : Colors.white,
+                                    color:
+                                        taken ? AppColors.teal : Colors.white,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: taken
-                                          ? AppColors.teal
-                                          : AppColors.primaryColor,
+                                      color:
+                                          taken
+                                              ? AppColors.teal
+                                              : AppColors.primaryColor,
                                       width: 1.6,
                                     ),
                                   ),
@@ -255,9 +263,10 @@ class _MedicationItemState extends State<MedicationItem> {
                                         ? Icons.check_rounded
                                         : Icons.schedule_rounded,
                                     size: 16,
-                                    color: taken
-                                        ? Colors.white
-                                        : AppColors.primaryColor,
+                                    color:
+                                        taken
+                                            ? Colors.white
+                                            : AppColors.primaryColor,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -267,9 +276,10 @@ class _MedicationItemState extends State<MedicationItem> {
                                     style: AppTextStyles.noto14w400.copyWith(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
-                                      color: taken
-                                          ? AppColors.teal
-                                          : AppColors.darkColor,
+                                      color:
+                                          taken
+                                              ? AppColors.teal
+                                              : AppColors.darkColor,
                                     ),
                                   ),
                                 ),
@@ -280,9 +290,10 @@ class _MedicationItemState extends State<MedicationItem> {
                                   style: AppTextStyles.noto14w400.copyWith(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: taken
-                                        ? AppColors.teal
-                                        : AppColors.primaryColor,
+                                    color:
+                                        taken
+                                            ? AppColors.teal
+                                            : AppColors.primaryColor,
                                   ),
                                 ),
                               ],
@@ -303,41 +314,43 @@ class _MedicationItemState extends State<MedicationItem> {
 
   Widget _buildImage() {
     if (widget.image.isEmpty) {
-      return Container(
+      return _imagePlaceholder();
+    }
+    final imageUri = Uri.tryParse(widget.image);
+    final Widget image;
+    if (widget.image.startsWith('assets/')) {
+      image = Image.asset(
+        widget.image,
         width: 64,
         height: 64,
-        decoration: BoxDecoration(
-          color: AppColors.light,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Icon(
-          Icons.medication_rounded,
-          color: AppColors.primaryColor,
-        ),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
       );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: CachedNetworkImage(
+    } else if (imageUri?.scheme == 'http' || imageUri?.scheme == 'https') {
+      image = CachedNetworkImage(
         imageUrl: widget.image,
         width: 64,
         height: 64,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          width: 64,
-          height: 64,
-          color: AppColors.light,
-        ),
-        errorWidget: (context, url, error) => Container(
-          width: 64,
-          height: 64,
-          color: AppColors.light,
-          child: const Icon(
-            Icons.medication_rounded,
-            color: AppColors.primaryColor,
-          ),
-        ),
-      ),
-    );
+        placeholder: (_, __) => _imagePlaceholder(),
+        errorWidget: (_, __, ___) => _imagePlaceholder(),
+      );
+    } else {
+      image = Image.file(
+        File(widget.image),
+        width: 64,
+        height: 64,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+      );
+    }
+    return ClipRRect(borderRadius: BorderRadius.circular(16), child: image);
   }
+
+  Widget _imagePlaceholder() => Container(
+    width: 64,
+    height: 64,
+    color: AppColors.light,
+    child: const Icon(Icons.medication_rounded, color: AppColors.primaryColor),
+  );
 }

@@ -1,10 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/pharmacy_logo.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/features/home/widgets/home_product_card.dart';
 import 'package:elkawther/features/home/widgets/home_sort_sheet.dart';
 import 'package:elkawther/features/home/widgets/section_header.dart';
@@ -74,7 +73,8 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
     final category = widget.category;
     final subcategories = category.subcategories;
     final products = _products;
-    final heading = _selectedSubcategory?.name(context) ?? category.name(context);
+    final heading =
+        _selectedSubcategory?.name(context) ?? category.name(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5FAFD),
@@ -84,9 +84,10 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
             child: _CategoryHero(
               imageUrl: _selectedSubcategory?.imageUrl ?? category.imageUrl,
               title: heading,
-              countLabel: isAr
-                  ? '${products.length} منتج'
-                  : '${products.length} products',
+              countLabel:
+                  isAr
+                      ? '${products.length} منتج'
+                      : '${products.length} products',
               onBack: () => Navigator.of(context).pop(),
             ),
           ),
@@ -119,19 +120,20 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
                                 ),
                               ),
                             ),
-                            suffixIcon: _searchController.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(
-                                      Icons.close_rounded,
-                                      size: 20,
-                                      color: AppColors.grey,
+                            suffixIcon:
+                                _searchController.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {});
+                                      },
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 20,
+                                        color: AppColors.grey,
+                                      ),
                                     ),
-                                  ),
                             filled: true,
                             fillColor: const Color(0xFFF5FAFD),
                             contentPadding: const EdgeInsets.symmetric(
@@ -165,9 +167,10 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
                     const SizedBox(height: 10),
                     HomeSortChip(
                       sort: _sort,
-                      onClear: () => setState(() {
-                        _sort = HomeProductSort.none;
-                      }),
+                      onClear:
+                          () => setState(() {
+                            _sort = HomeProductSort.none;
+                          }),
                     ),
                   ],
                   if (subcategories.isNotEmpty) ...[
@@ -180,18 +183,20 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
                           _SubChip(
                             label: isAr ? 'الكل' : 'All',
                             selected: _selectedSubcategoryId == null,
-                            onTap: () => setState(() {
-                              _selectedSubcategoryId = null;
-                            }),
+                            onTap:
+                                () => setState(() {
+                                  _selectedSubcategoryId = null;
+                                }),
                           ),
                           ...subcategories.map((sub) {
                             return _SubChip(
                               label: sub.name(context),
                               imageUrl: sub.imageUrl,
                               selected: sub.id == _selectedSubcategoryId,
-                              onTap: () => setState(() {
-                                _selectedSubcategoryId = sub.id;
-                              }),
+                              onTap:
+                                  () => setState(() {
+                                    _selectedSubcategoryId = sub.id;
+                                  }),
                             );
                           }),
                         ],
@@ -217,14 +222,15 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
                       SectionHeader(
                         title: S.of(context).bestSellingProducts,
                         actionText: S.of(context).viewMore,
-                        onPressed: () => HomeNavigation.openList(
-                          context,
-                          title: S.of(context).bestSellingProducts,
-                          products: sortedHomeProducts(
-                            _baseProducts,
-                            HomeProductSort.bestSelling,
-                          ),
-                        ),
+                        onPressed:
+                            () => HomeNavigation.openList(
+                              context,
+                              title: S.of(context).bestSellingProducts,
+                              products: sortedHomeProducts(
+                                _baseProducts,
+                                HomeProductSort.bestSelling,
+                              ),
+                            ),
                       ),
                       HomeProductsRow(products: _bestSelling),
                     ],
@@ -235,9 +241,7 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-                  child: SectionHeader(
-                    title: S.of(context).all_products,
-                  ),
+                  child: SectionHeader(title: S.of(context).all_products),
                 ),
               ),
             SliverPadding(
@@ -249,12 +253,9 @@ class _HomeCategoryProductsViewState extends State<HomeCategoryProductsView> {
                   crossAxisSpacing: 12,
                   childAspectRatio: 0.62,
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    return HomeProductCard(product: products[index]);
-                  },
-                  childCount: products.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  return HomeProductCard(product: products[index]);
+                }, childCount: products.length),
               ),
             ),
           ],
@@ -285,13 +286,7 @@ class _CategoryHero extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(
-            imageUrl: imageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => const ColoredBox(color: AppColors.light),
-            errorWidget: (context, url, error) =>
-                const ColoredBox(color: AppColors.light),
-          ),
+          HomeCatalogImage(assetPath: imageUrl, fit: BoxFit.cover),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -389,15 +384,11 @@ class _SubChip extends StatelessWidget {
               children: [
                 if (imageUrl != null) ...[
                   ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl!,
+                    child: HomeCatalogImage(
+                      assetPath: imageUrl!,
                       width: 24,
                       height: 24,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          const PharmacyImageLoading(),
-                      errorWidget: (context, url, error) =>
-                          const PharmacyPlaceholder(size: 16),
                     ),
                   ),
                   const SizedBox(width: 6),

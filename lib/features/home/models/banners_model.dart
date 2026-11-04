@@ -1,3 +1,25 @@
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+bool? _parseBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    switch (value.toLowerCase()) {
+      case 'true':
+      case '1':
+        return true;
+      case 'false':
+      case '0':
+        return false;
+    }
+  }
+  return null;
+}
+
 class BannersModel {
   String? status;
   String? message;
@@ -15,7 +37,7 @@ class BannersModel {
         data!.add(Data.fromJson(v));
       });
     }
-    count = json['count'];
+    count = _parseInt(json['count']);
   }
 
   Map<String, dynamic> toJson() {
@@ -34,7 +56,7 @@ class Data {
   int? id;
   String? image;
   String? link;
-  int? status;
+  bool? status;
   int? orderOfAppearance;
   String? createdAt;
   String? updatedAt;
@@ -54,11 +76,11 @@ class Data {
   });
 
   Data.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
+    id = _parseInt(json['id']);
     image = json['image'];
     link = json['link'];
-    status = json['status'];
-    orderOfAppearance = json['order_of_appearance'];
+    status = _parseBool(json['status']);
+    orderOfAppearance = _parseInt(json['order_of_appearance']);
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
     title = json['title'];

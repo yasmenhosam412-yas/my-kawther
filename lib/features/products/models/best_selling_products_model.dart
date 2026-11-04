@@ -238,11 +238,11 @@ class Brand {
 
   Brand.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    image = json['image'];
-    name = json['name'];
-    imageUrl = json['image_url'];
+    createdAt = json['created_at']?.toString();
+    updatedAt = json['updated_at']?.toString();
+    image = json['image']?.toString();
+    name = json['name']?.toString();
+    imageUrl = json['image_url']?.toString();
   }
 
   Map<String, dynamic> toJson() {
@@ -278,11 +278,11 @@ class HealthIssues {
 
   HealthIssues.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    image = json['image'];
-    name = json['name'];
-    imageUrl = json['image_url'];
+    createdAt = json['created_at']?.toString();
+    updatedAt = json['updated_at']?.toString();
+    image = json['image']?.toString();
+    name = json['name']?.toString();
+    imageUrl = json['image_url']?.toString();
     pivot = json['pivot'] != null ? Pivot.fromJson(json['pivot']) : null;
   }
 

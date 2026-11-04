@@ -1,5 +1,13 @@
 import 'package:elkawther/features/categories/models/category_products_model.dart';
 
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+String? _parseString(dynamic value) => value?.toString();
+
 class LatestProductsModel {
   String? status;
   String? message;
@@ -10,9 +18,9 @@ class LatestProductsModel {
 
   factory LatestProductsModel.fromJson(Map<String, dynamic> json) {
     return LatestProductsModel(
-      status: json['status'],
-      message: json['message'],
-      count: json['count'],
+      status: _parseString(json['status']),
+      message: _parseString(json['message']),
+      count: _parseInt(json['count']),
       data:
           (json['data'] as List<dynamic>?)
               ?.map((item) => LatestProductsData.fromJson(item))
@@ -71,25 +79,28 @@ class LatestProductsData {
 
   factory LatestProductsData.fromJson(Map<String, dynamic> json) {
     return LatestProductsData(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      image: json['image'],
-      imageUrl: json['image_url'],
+      id: _parseInt(json['id']),
+      name: _parseString(json['name']),
+      description: _parseString(json['description']),
+      image: _parseString(json['image']),
+      imageUrl: _parseString(json['image_url']),
       images:
           (json['images'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
       finalPrice:
           (json['final_price'] != null)
               ? double.tryParse(json['final_price'].toString())
               : null,
-      rate: (json['rate'] != null) ? (json['rate'] as num).toDouble() : null,
-      isFavorite: json['is_favorite'],
+      rate: json['rate'] != null ? double.tryParse('${json['rate']}') : null,
+      isFavorite:
+          json['is_favorite'] is bool
+              ? json['is_favorite']
+              : json['is_favorite'] == 1 || json['is_favorite'] == '1',
       averageRating:
           (json['average_rating'] != null)
-              ? (json['average_rating'] as num).toDouble()
+              ? double.tryParse('${json['average_rating']}')
               : null,
-      ratingsCount: json['ratings_count'],
-      discountType: json['discount_type'],
+      ratingsCount: _parseInt(json['ratings_count']),
+      discountType: _parseString(json['discount_type']),
       brand: json['brand'] != null ? Brand.fromJson(json['brand']) : null,
       category:
           json['category'] != null ? Category.fromJson(json['category']) : null,
@@ -140,10 +151,10 @@ class Brand {
   Brand({this.id, this.name, this.image, this.imageUrl});
 
   factory Brand.fromJson(Map<String, dynamic> json) => Brand(
-    id: json['id'],
-    name: json['name'],
-    image: json['image'],
-    imageUrl: json['image_url'],
+    id: _parseInt(json['id']),
+    name: _parseString(json['name']),
+    image: _parseString(json['image']),
+    imageUrl: _parseString(json['image_url']),
   );
 
   Map<String, dynamic> toJson() => {
@@ -163,10 +174,10 @@ class Category {
   Category({this.id, this.name, this.image, this.imageUrl});
 
   factory Category.fromJson(Map<String, dynamic> json) => Category(
-    id: json['id'],
-    name: json['name'],
-    image: json['image'],
-    imageUrl: json['image_url'],
+    id: _parseInt(json['id']),
+    name: _parseString(json['name']),
+    image: _parseString(json['image']),
+    imageUrl: _parseString(json['image_url']),
   );
 
   Map<String, dynamic> toJson() => {
@@ -186,7 +197,7 @@ class ProductSize {
   ProductSize({this.size, this.originalPrice, this.price, this.stock});
 
   factory ProductSize.fromJson(Map<String, dynamic> json) => ProductSize(
-    size: json['size'],
+    size: _parseString(json['size']),
     originalPrice:
         json['original_price'] != null
             ? double.tryParse(json['original_price'].toString())
@@ -195,7 +206,7 @@ class ProductSize {
         json['price'] != null
             ? double.tryParse(json['price'].toString())
             : null,
-    stock: json['stock'],
+    stock: _parseInt(json['stock']),
   );
 
   Map<String, dynamic> toJson() => {
@@ -215,10 +226,10 @@ class ProductImage {
   ProductImage({this.id, this.productId, this.imagePath, this.imageUrl});
 
   factory ProductImage.fromJson(Map<String, dynamic> json) => ProductImage(
-    id: json['id'],
-    productId: json['product_id'],
-    imagePath: json['image_path'],
-    imageUrl: json['image_url'],
+    id: _parseInt(json['id']),
+    productId: _parseInt(json['product_id']),
+    imagePath: _parseString(json['image_path']),
+    imageUrl: _parseString(json['image_url']),
   );
 
   Map<String, dynamic> toJson() => {

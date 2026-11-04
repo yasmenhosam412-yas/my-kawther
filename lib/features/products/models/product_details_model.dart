@@ -36,20 +36,24 @@ class ProductDetailsModel {
   });
 
   factory ProductDetailsModel.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] ?? json;
+    final rawData = json['data'] ?? json;
+    final data = rawData is Map<String, dynamic> ? rawData : json;
 
     return ProductDetailsModel(
-      id: data['id'] ?? 0,
-      name: data['name'] ?? '',
-      description: data['description'] ?? '',
-      imageUrl: data['image_url'] ?? '',
-      images: List<String>.from(data['images'] ?? []),
-      isFavorite: data['is_favorite'] ?? false,
-      rate: (data['rate'] ?? 0).toDouble(),
-      averageRating: double.tryParse(data['average_rating'].toString()) ?? 0,
-      ratingsCount: data['ratings_count'] ?? 0,
+      id: _asInt(data['id']),
+      name: data['name']?.toString() ?? '',
+      description: data['description']?.toString() ?? '',
+      imageUrl: data['image_url']?.toString() ?? '',
+      images: (data['images'] as List<dynamic>?)
+              ?.map((image) => image.toString())
+              .toList() ??
+          [],
+      isFavorite: _asBool(data['is_favorite']),
+      rate: _asDouble(data['rate']),
+      averageRating: _asDouble(data['average_rating']),
+      ratingsCount: _asInt(data['ratings_count']),
       finalPrice: double.tryParse(data['final_price']?.toString() ?? '0') ?? 0,
-      discountType: data['discount_type'] ?? '',
+      discountType: data['discount_type']?.toString() ?? '',
       sizes:
           (data['sizes'] as List<dynamic>?)
               ?.map((e) => SizeModel.fromJson(e))
@@ -66,6 +70,22 @@ class ProductDetailsModel {
           data['category'] != null ? Category.fromJson(data['category']) : null,
     );
   }
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _asDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+bool _asBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  return value?.toString().toLowerCase() == 'true' || value?.toString() == '1';
 }
 
 class Saleable {
@@ -89,14 +109,14 @@ class Saleable {
 
   factory Saleable.fromJson(Map<String, dynamic> json) {
     return Saleable(
-      id: json['id'],
+      id: _asInt(json['id']),
       discountValue:
           double.tryParse(json['discount_value']?.toString() ?? '0') ?? 0,
-      isActive: json['is_active'] == 1,
-      date: json['date'] ?? '',
-      time: json['time'] ?? '',
-      startsAt: json['starts_at'] ?? '',
-      endsAt: json['ends_at'] ?? '',
+      isActive: _asBool(json['is_active']),
+      date: json['date']?.toString() ?? '',
+      time: json['time']?.toString() ?? '',
+      startsAt: json['starts_at']?.toString() ?? '',
+      endsAt: json['ends_at']?.toString() ?? '',
     );
   }
 }
@@ -110,9 +130,9 @@ class Category {
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      imageUrl: json['image_url'] ?? '',
+      id: _asInt(json['id']),
+      name: json['name']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
     );
   }
 }

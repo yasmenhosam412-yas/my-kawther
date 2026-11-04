@@ -35,17 +35,20 @@ class RelatedProductDataModel {
 
   factory RelatedProductDataModel.fromJson(Map<String, dynamic> json) {
     return RelatedProductDataModel(
-      id: json['id'],
-      name: json['name'] ?? '',
-      description: json['description'],
-      image: json['image'],
-      imageUrl: json['image_url'],
-      images: List<String>.from(json['images'] ?? []),
-      isFavorite: json['is_favorite'] ?? false,
-      averageRating: (json['average_rating'] ?? 0).toDouble(),
-      ratingsCount: json['ratings_count'] ?? 0,
-      finalPrice: double.tryParse(json['final_price'].toString()) ?? 0.0,
-      discountType: json['discount_type'],
+      id: _asInt(json['id']),
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      image: json['image']?.toString(),
+      imageUrl: json['image_url']?.toString(),
+      images: (json['images'] as List<dynamic>?)
+              ?.map((image) => image.toString())
+              .toList() ??
+          [],
+      isFavorite: _asBool(json['is_favorite']),
+      averageRating: _asDouble(json['average_rating']),
+      ratingsCount: _asInt(json['ratings_count']),
+      finalPrice: _asDouble(json['final_price']),
+      discountType: json['discount_type']?.toString(),
       availableSizes:
           (json['available_sizes'] as List<dynamic>?)
               ?.map((e) => AvailableSize.fromJson(e))
@@ -60,4 +63,21 @@ class RelatedProductDataModel {
           json['saleable'] != null ? Saleable.fromJson(json['saleable']) : null,
     );
   }
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _asDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+bool _asBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  return value?.toString().toLowerCase() == 'true' || value?.toString() == '1';
 }

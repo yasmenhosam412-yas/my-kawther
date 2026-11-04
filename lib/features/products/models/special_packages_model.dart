@@ -1,5 +1,27 @@
 import 'package:elkawther/features/categories/models/category_products_model.dart';
 
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+bool? _parseBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    switch (value.toLowerCase()) {
+      case 'true':
+      case '1':
+        return true;
+      case 'false':
+      case '0':
+        return false;
+    }
+  }
+  return null;
+}
+
 double parseToDouble(dynamic value) {
   if (value == null) return 0.0;
   if (value is num) return value.toDouble();
@@ -27,7 +49,7 @@ class SpecialPackagesModel {
     return SpecialPackagesModel(
       status: json['status']?.toString(),
       message: json['message']?.toString(),
-      count: json['count'],
+      count: _parseInt(json['count']),
       topPercentDiscount:
           data?['top_percent_discount'] != null
               ? DiscountSection.fromJson(data['top_percent_discount'])
@@ -73,7 +95,7 @@ class DiscountSection {
     return DiscountSection(
       discountValue: discount,
       products: productList,
-      total: json['total'],
+      total: _parseInt(json['total']),
     );
   }
 
@@ -128,19 +150,23 @@ class SpecialPackagesData {
 
   factory SpecialPackagesData.fromJson(Map<String, dynamic> json) {
     return SpecialPackagesData(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      image: json['main_image'],
-      images: json['images'] != null ? List<String>.from(json['images']) : [],
+      id: _parseInt(json['id']),
+      name: json['name']?.toString(),
+      description: json['description']?.toString(),
+      image: json['main_image']?.toString(),
+      images:
+          (json['images'] as List<dynamic>?)
+              ?.map((image) => image.toString())
+              .toList() ??
+          [],
       brand: json['brand']?.toString(),
       category: json['category']?.toString(),
       priceBeforeDiscount: json['price_before_discount']?.toString(),
       priceAfterDiscount: parseToDouble(json['price_after_discount']),
-      discountType: json['discount_type'],
-      isFavorite: json['is_favorite'] ?? false,
+      discountType: json['discount_type']?.toString(),
+      isFavorite: _parseBool(json['is_favorite']) ?? false,
       rate: parseToDouble(json['rate']),
-      ratingsCount: json['ratings_count'] ?? 0,
+      ratingsCount: _parseInt(json['ratings_count']) ?? 0,
       averageRating: parseToDouble(json['average_rating']),
       availableSizes:
           (json['available_sizes'] as List<dynamic>?)

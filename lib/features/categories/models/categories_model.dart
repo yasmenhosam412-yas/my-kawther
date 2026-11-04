@@ -1,3 +1,9 @@
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
 class CategoriesModel {
   final String status;
   final String message;
@@ -13,9 +19,9 @@ class CategoriesModel {
 
   factory CategoriesModel.fromJson(Map<String, dynamic> json) =>
       CategoriesModel(
-        status: json['status'],
-        message: json['message'],
-        count: json['count'],
+        status: json['status']?.toString() ?? '',
+        message: json['message']?.toString() ?? '',
+        count: _parseInt(json['count']),
         data: List<CategoryData>.from(
           (json['data'] ?? []).map((e) => CategoryData.fromJson(e)),
         ),
@@ -44,13 +50,15 @@ class CategoryData {
   });
 
   factory CategoryData.fromJson(Map<String, dynamic> json) => CategoryData(
-    id: json['id'],
-    parentId: json['parent_id'],
-    createdAt: json['created_at'],
-    updatedAt: json['updated_at'],
-    image: json['image'],
-    name: json['name'],
-    imageUrl: json['image_url'],
+    id:
+        _parseInt(json['id']) ??
+        (throw const FormatException('Category id must be an integer.')),
+    parentId: _parseInt(json['parent_id']),
+    createdAt: json['created_at']?.toString() ?? '',
+    updatedAt: json['updated_at']?.toString() ?? '',
+    image: json['image']?.toString() ?? '',
+    name: json['name']?.toString() ?? '',
+    imageUrl: json['image_url']?.toString() ?? '',
     subcategories: List<Subcategory>.from(
       (json['subcategories'] ?? []).map((e) => Subcategory.fromJson(e)),
     ),
@@ -77,12 +85,18 @@ class Subcategory {
   });
 
   factory Subcategory.fromJson(Map<String, dynamic> json) => Subcategory(
-    id: json['id'],
-    parentId: json['parent_id'],
-    createdAt: json['created_at'],
-    updatedAt: json['updated_at'],
-    image: json['image'],
-    name: json['name'],
-    imageUrl: json['image_url'],
+    id:
+        _parseInt(json['id']) ??
+        (throw const FormatException('Subcategory id must be an integer.')),
+    parentId:
+        _parseInt(json['parent_id']) ??
+        (throw const FormatException(
+          'Subcategory parent_id must be an integer.',
+        )),
+    createdAt: json['created_at']?.toString() ?? '',
+    updatedAt: json['updated_at']?.toString() ?? '',
+    image: json['image']?.toString() ?? '',
+    name: json['name']?.toString() ?? '',
+    imageUrl: json['image_url']?.toString() ?? '',
   );
 }

@@ -1,4 +1,3 @@
-import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/my_dose/models/medication_model.dart';
 import 'package:elkawther/features/my_dose/models/time_model.dart';
 import 'package:flutter/foundation.dart';
@@ -79,7 +78,7 @@ class DoseLocalStore extends ChangeNotifier {
       id: id,
       name: name,
       notes: notes,
-      imagePath: imagePath ?? HomeDemoData.bestSelling.first.imageUrl,
+      imagePath: imagePath,
       quantityPerTime: quantityPerTime,
       repeatType: repeatType,
       days: days,
@@ -141,7 +140,6 @@ class DoseLocalStore extends ChangeNotifier {
       id: 1,
       name: 'بانادول 500 مجم',
       notes: 'قرص بعد الأكل للصداع والحرارة',
-      imagePath: HomeDemoData.bestSelling.first.imageUrl,
       quantityPerTime: 1,
       repeatType: 'every_day',
       days: _allDays,
@@ -154,9 +152,6 @@ class DoseLocalStore extends ChangeNotifier {
       id: 2,
       name: 'فيتامين د3 5000',
       notes: 'كبسولة يومياً بعد الإفطار',
-      imagePath: HomeDemoData.allProducts
-          .firstWhere((item) => item.id == 28)
-          .imageUrl,
       quantityPerTime: 1,
       repeatType: 'every_day',
       days: _allDays,
@@ -168,9 +163,6 @@ class DoseLocalStore extends ChangeNotifier {
       id: 3,
       name: 'ريدوكسون فيتامين سي 1000',
       notes: 'قرص فوار في كوب ماء صباحاً',
-      imagePath: HomeDemoData.allProducts
-          .firstWhere((item) => item.id == 5)
-          .imageUrl,
       quantityPerTime: 1,
       repeatType: 'every_day',
       days: _allDays,
@@ -182,9 +174,6 @@ class DoseLocalStore extends ChangeNotifier {
       id: 4,
       name: 'أوميغا 3',
       notes: 'كبسولة بعد العشاء',
-      imagePath: HomeDemoData.allProducts
-          .firstWhere((item) => item.id == 2)
-          .imageUrl,
       quantityPerTime: 1,
       repeatType: 'every_day',
       days: _allDays,
@@ -196,9 +185,6 @@ class DoseLocalStore extends ChangeNotifier {
       id: 5,
       name: 'مغنيسيوم B6',
       notes: 'قرص قبل النوم',
-      imagePath: HomeDemoData.allProducts
-          .firstWhere((item) => item.id == 8)
-          .imageUrl,
       quantityPerTime: 1,
       repeatType: 'specific_days',
       days: const ['sunday', 'tuesday', 'thursday'],
@@ -210,9 +196,6 @@ class DoseLocalStore extends ChangeNotifier {
       id: 6,
       name: 'ستربسلز عسل وليمون',
       notes: 'قرص استحلاب عند التهاب الحلق',
-      imagePath: HomeDemoData.allProducts
-          .firstWhere((item) => item.id == 14)
-          .imageUrl,
       quantityPerTime: 1,
       repeatType: 'specific_days',
       days: const ['saturday', 'sunday', 'monday'],

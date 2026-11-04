@@ -26,6 +26,14 @@ class AddressModel {
   });
 
   factory AddressModel.fromJson(Map<String, dynamic> json) {
+    int? parseId(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '');
+    }
+
+    String? parseString(dynamic value) => value?.toString();
+
     bool parseIsDefault(dynamic val) {
       if (val == null) return false;
       if (val is bool) return val;
@@ -35,17 +43,20 @@ class AddressModel {
     }
 
     return AddressModel(
-      id: json['id'],
-      address: json['address'],
-      governorate: json['governorate'],
-      city: json['city'],
-      street: json['street'],
-      building: json['building'],
-      apartment: json['apartment'],
-      landmark: json['landmark'],
-      type: json['type'],
-      isDefault: parseIsDefault(json['is_default']),
-      isPharmacy: json['is_pharmacy'] ?? false,
+      id: parseId(json['id']),
+      address: parseString(json['address']),
+      governorate: parseString(json['governorate']),
+      city: parseString(json['city'] ?? json['governorate']),
+      street: parseString(json['street']),
+      building: parseString(json['building']),
+      apartment: parseString(json['apartment']),
+      landmark: parseString(json['landmark']),
+      type: parseString(json['type']),
+      isDefault: parseIsDefault(json['is_default'] ?? json['default']),
+      isPharmacy:
+          json['is_pharmacy'] is bool
+              ? json['is_pharmacy'] as bool
+              : parseIsDefault(json['is_pharmacy']),
     );
   }
 

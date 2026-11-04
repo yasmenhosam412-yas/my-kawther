@@ -13,7 +13,6 @@ import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/generated/assets.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/features/products/widgets/product_item.dart';
-import 'package:elkawther/core/widgets/custom_search_bar.dart';
 import 'package:elkawther/features/products/widgets/filter_bottom_sheet.dart';
 
 enum BrandFilterType { none, bestSelling, newArrival }
@@ -63,6 +62,14 @@ class _BrandProductsViewState extends State<BrandProductsView> {
     }
   }
 
+  double _priceOf(BrandProduct product) {
+    final sizes = product.availableSizes;
+    if (sizes != null && sizes.isNotEmpty) {
+      return sizes.first.price ?? product.finalPrice ?? 0;
+    }
+    return product.finalPrice ?? 0;
+  }
+
   Future<void> _loadMore() async {
     setState(() => _isLoadingMore = true);
     await _cubit.fetchBrandProductsMore(widget.brandId, context);
@@ -102,15 +109,11 @@ class _BrandProductsViewState extends State<BrandProductsView> {
 
       if (filter == S.of(context).price_high_to_low) {
         temp.sort(
-          (a, b) => (b.availableSizes?.first.price ?? 0).compareTo(
-            a.availableSizes?.first.price ?? 0,
-          ),
+          (a, b) => _priceOf(b).compareTo(_priceOf(a)),
         );
       } else if (filter == S.of(context).price_low_to_high) {
         temp.sort(
-          (a, b) => (a.availableSizes?.first.price ?? 0).compareTo(
-            b.availableSizes?.first.price ?? 0,
-          ),
+          (a, b) => _priceOf(a).compareTo(_priceOf(b)),
         );
       } else if (filter == S.of(context).top_rated) {
         temp.sort((a, b) => (b.rate ?? 0).compareTo(a.rate ?? 0));
@@ -206,61 +209,238 @@ class _BrandProductsViewState extends State<BrandProductsView> {
     return BlocProvider.value(
       value: _cubit,
       child: Scaffold(
+        backgroundColor: const Color(0xFFF5FAFD),
         appBar: AppBar(
-          centerTitle: true,
+          backgroundColor: const Color(0xFFF5FAFD),
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           title: Text(
-            widget.brandName,
-            style: Theme.of(context).textTheme.titleLarge,
+            S.of(context).brands,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.darkColor,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(AppPadding.medium),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomSearchBar(
-                      controller: _searchController,
-                      searchHint: S.of(context).searchFor,
+        body: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppPadding.medium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: AlignmentDirectional.topStart,
+                      end: AlignmentDirectional.bottomEnd,
+                      colors: [
+                        AppColors.primaryColor,
+                        AppColors.primaryColor.withOpacity(0.82),
+                      ],
                     ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryColor.withOpacity(0.18),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: _showFilterBottomSheet,
-                    child: SvgPicture.asset(
-                      Assets.iconsFilterIcon,
-                      height: 45,
-                      width: 45,
-                    ),
-                  ),
-                ],
-              ),
-              if (_selectedFilters.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    children:
-                        _selectedFilters.map((filter) {
-                          return Chip(
-                            label: Text(
-                              filter,
-                              style: const TextStyle(fontSize: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(17),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.24),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          size: 29,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.brandName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                            const SizedBox(height: 4),
+                            Text(
+                              S.of(context).brands,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white.withOpacity(0.85),
+                                  ),
                             ),
-                            deleteIcon: const Icon(Icons.close),
-                            onDeleted: _resetAllFilters,
-                          );
-                        }).toList(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.16),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          '${_filteredProducts.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              const SizedBox(height: 16),
-              Expanded(child: _buildProductGrid(context)),
-            ],
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 52,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.lightDarker),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.darkColor.withOpacity(0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            SvgPicture.asset(
+                              Assets.iconsSearchIcon,
+                              height: 20,
+                              width: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: S.of(context).searchFor,
+                                  border: InputBorder.none,
+                                  isCollapsed: true,
+                                  hintStyle: TextStyle(
+                                    color: AppColors.grey.withOpacity(0.75),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        onTap: _showFilterBottomSheet,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _selectedFilters.isNotEmpty
+                                  ? AppColors.primaryColor
+                                  : AppColors.lightDarker,
+                            ),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SvgPicture.asset(
+                                Assets.iconsFilterIcon,
+                                height: 22,
+                                width: 22,
+                              ),
+                              if (_selectedFilters.isNotEmpty)
+                                PositionedDirectional(
+                                  top: 8,
+                                  end: 8,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.teal,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_selectedFilters.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Wrap(
+                      spacing: 8,
+                      children: _selectedFilters.map((filter) {
+                        return InputChip(
+                          label: Text(filter),
+                          onDeleted: _resetAllFilters,
+                          deleteIconColor: AppColors.primaryColor,
+                          backgroundColor: AppColors.light,
+                          side: BorderSide(
+                            color: AppColors.primaryColor.withOpacity(0.14),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          labelStyle: const TextStyle(
+                            color: AppColors.primaryColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Expanded(child: _buildProductGrid(context)),
+              ],
+            ),
           ),
         ),
       ),
@@ -284,8 +464,9 @@ class _BrandProductsViewState extends State<BrandProductsView> {
                   Text(
                     S.of(context).no_products_found,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 22,
+                      fontSize: 20,
                       color: AppColors.primaryColor,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -295,12 +476,12 @@ class _BrandProductsViewState extends State<BrandProductsView> {
 
           return GridView.builder(
             controller: _scrollController,
-            padding: EdgeInsets.zero,
+            padding: const EdgeInsets.only(bottom: 18),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.55,
+              mainAxisSpacing: 14,
+              childAspectRatio: ProductItem.cardAspectRatio,
             ),
             itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
@@ -325,8 +506,9 @@ class _BrandProductsViewState extends State<BrandProductsView> {
                     image: product.imageUrl ?? Assets.imagesCattest,
                     title: product.name ?? '',
                     subtitle: product.description ?? '',
-                    price: product.availableSizes?.first.price ?? 0.0,
-                    hasDiscount: product.discountType != null,
+                    price: _priceOf(product),
+                    hasDiscount: product.discountType != null &&
+                        product.availableSizes?.isNotEmpty == true,
                     discount: getDiscountBrand(product, context),
                     rating: product.rate ?? 0.0,
                     reviews: product.ratingsCount ?? 0,
@@ -344,7 +526,30 @@ class _BrandProductsViewState extends State<BrandProductsView> {
             },
           );
         } else if (state is BrandProductsError) {
-          return Center(child: Text(state.message));
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.wifi_off_rounded,
+                  size: 42,
+                  color: AppColors.grey.withOpacity(0.7),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  state.message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.grey),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: _fetchProductsWithFilters,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(S.of(context).retry),
+                ),
+              ],
+            ),
+          );
         }
 
         return const SizedBox.shrink();

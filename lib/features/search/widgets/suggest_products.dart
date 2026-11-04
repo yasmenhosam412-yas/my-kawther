@@ -45,7 +45,10 @@ class _SearchSuggestionsState extends State<SearchSuggestions> {
         ),
         const SizedBox(height: AppPadding.medium),
         SizedBox(
-          height: MediaQuery.sizeOf(context).height * 0.4,
+          height:
+              MediaQuery.sizeOf(context).width *
+              0.42 /
+              ProductItem.cardAspectRatio,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: widget.products.length,

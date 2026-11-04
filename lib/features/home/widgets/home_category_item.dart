@@ -1,7 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:flutter/material.dart';
 
 class HomeCategoryItem extends StatelessWidget {
@@ -40,15 +39,11 @@ class HomeCategoryItem extends StatelessWidget {
                   ),
                 ],
               ),
-              child: CachedNetworkImage(
+              child: HomeCatalogImage(
                 width: double.infinity,
                 height: double.infinity,
-                imageUrl: imageUrl,
+                assetPath: imageUrl,
                 fit: BoxFit.contain,
-                placeholder:
-                    (context, url) => const PharmacyImageLoading(),
-                errorWidget:
-                    (context, url, error) => const PharmacyPlaceholder(size: 40),
               ),
             ),
             const SizedBox(height: 8),

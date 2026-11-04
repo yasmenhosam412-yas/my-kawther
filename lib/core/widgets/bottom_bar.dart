@@ -123,7 +123,7 @@ class _BottomBarState extends State<BottomBar> {
           Expanded(
             child: BlocBuilder<AuthCubit, AuthState>(
               builder: (context, state) {
-                final isLoggedIn = state.status == AuthStatus.authenticated;
+                final isLoggedIn = state is AuthLoadedLogin || state is AuthLoadedRegister;
                 return SizedBox(
                   height: 52,
                   child: ElevatedButton.icon(

@@ -1,17 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/widgets/custom_elevated_button.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
 import 'package:elkawther/features/home/data/home_cart_store.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/data/home_favorites_store.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
+import 'package:elkawther/features/home/widgets/home_commerce_buttons.dart';
 import 'package:elkawther/features/home/widgets/home_sub_scaffold.dart';
-import 'package:elkawther/generated/assets.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 class HomeProductDetailsView extends StatefulWidget {
@@ -33,24 +30,21 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
     return HomeSubScaffold(
       title: product.name(context),
       actions: [
-        IconButton(
+        HomeFavoriteButton(
+          isFavorite: isFav,
+          size: 40,
+          iconSize: 18,
           onPressed: () {
             HomeFavoritesStore.instance.toggle(product);
             setState(() {});
           },
-          icon: SvgPicture.asset(
-            isFav ? Assets.iconsFav2 : Assets.iconsFav,
-            width: 20,
-            height: 20,
-          ),
         ),
       ],
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: CustomElevatedButton(
+          child: HomeAddToCartButton(
             title: S.of(context).addToCart,
-            backgroundColor: AppColors.primaryColor,
             onPressed: () {
               HomeCartStore.instance.add(product);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -68,14 +62,9 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
           SizedBox(
             height: 280,
             width: double.infinity,
-            child: CachedNetworkImage(
-              imageUrl: product.imageUrl,
+            child: HomeCatalogImage(
+              assetPath: product.imageUrl,
               fit: BoxFit.cover,
-              placeholder: (context, url) => const PharmacyImageLoading(),
-              errorWidget: (context, url, error) => const ColoredBox(
-                color: AppColors.light,
-                child: Center(child: PharmacyPlaceholder(size: 96)),
-              ),
             ),
           ),
           Padding(
@@ -111,40 +100,42 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
                     color: AppColors.darkColor,
                   ),
                 ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => HomeNavigation.openRatings(context, product),
-                  child: Row(
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      color: Color(0xFFFFC107),
-                      size: 18,
+                if (product.reviews > 0) ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => HomeNavigation.openRatings(context, product),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFC107),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.rating}',
+                          style: AppTextStyles.noto14w400.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkColor,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '(${product.reviews})',
+                          style: AppTextStyles.noto14w400.copyWith(
+                            color: AppColors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color: AppColors.primaryColor,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${product.rating}',
-                      style: AppTextStyles.noto14w400.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkColor,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '(${product.reviews})',
-                      style: AppTextStyles.noto14w400.copyWith(
-                        color: AppColors.grey,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                   const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: AppColors.primaryColor,
-                    ),
-                  ],
-                ),
-                ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -201,21 +192,21 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
                   height: 220,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: HomeDemoData.allProducts
-                        .where((item) => item.id != product.id)
-                        .take(6)
-                        .length,
+                    itemCount:
+                        HomeDemoData.allProducts
+                            .where((item) => item.id != product.id)
+                            .take(6)
+                            .length,
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
                     itemBuilder: (context, index) {
-                      final related = HomeDemoData.allProducts
-                          .where((item) => item.id != product.id)
-                          .take(6)
-                          .toList()[index];
+                      final related =
+                          HomeDemoData.allProducts
+                              .where((item) => item.id != product.id)
+                              .take(6)
+                              .toList()[index];
                       return GestureDetector(
-                        onTap: () => HomeNavigation.openProduct(
-                          context,
-                          related,
-                        ),
+                        onTap:
+                            () => HomeNavigation.openProduct(context, related),
                         child: SizedBox(
                           width: 140,
                           child: Column(
@@ -223,15 +214,11 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: CachedNetworkImage(
-                                  imageUrl: related.imageUrl,
+                                child: HomeCatalogImage(
+                                  assetPath: related.imageUrl,
                                   height: 120,
                                   width: 140,
                                   fit: BoxFit.cover,
-                                  placeholder: (context, url) =>
-                                      const PharmacyImageLoading(),
-                                  errorWidget: (context, url, error) =>
-                                      const PharmacyPlaceholder(size: 48),
                                 ),
                               ),
                               const SizedBox(height: 8),

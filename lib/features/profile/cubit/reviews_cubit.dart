@@ -41,13 +41,17 @@ class ReviewCubit extends Cubit<ReviewState> {
   }
 
   Future<void> getReview(int id) async {
+    if (isClosed) return;
     emit(ReviewLoading());
     try {
       final response = await ordersServices.getProductReview(id);
+      if (isClosed) return;
       emit(ReviewRatesLoaded(response));
     } on DioException catch (e) {
+      if (isClosed) return;
       emit(ReviewError(Errors.fromDioError(e)));
     } catch (e) {
+      if (isClosed) return;
       emit(ReviewError(e is Errors ? e : Errors(message: e.toString())));
     }
   }

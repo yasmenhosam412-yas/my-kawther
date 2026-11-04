@@ -39,13 +39,15 @@ class CustomReviewListItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppPadding.small),
-        Text(
-          reviewText,
-          style: AppTextStyles.ibmPlexSans16w500.copyWith(
-            color: const Color(0xff6B7280),
+        if (reviewText.trim().isNotEmpty) ...[
+          Text(
+            reviewText,
+            style: AppTextStyles.ibmPlexSans16w500.copyWith(
+              color: const Color(0xff6B7280),
+            ),
           ),
-        ),
-        const SizedBox(height: AppPadding.small),
+          const SizedBox(height: AppPadding.small),
+        ],
         RichText(
           text: TextSpan(
             style: AppTextStyles.ibmPlexSans16w500.copyWith(

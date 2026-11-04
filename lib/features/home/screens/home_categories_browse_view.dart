@@ -1,9 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/pharmacy_logo.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/features/home/widgets/home_product_card.dart';
 import 'package:elkawther/features/home/widgets/home_sort_sheet.dart';
 import 'package:elkawther/generated/l10n.dart';
@@ -55,7 +54,9 @@ class _HomeCategoriesBrowseViewState extends State<HomeCategoriesBrowseView> {
   List<HomeDemoProduct> get _products {
     List<HomeDemoProduct> products;
     if (_selectedSubcategoryId != null) {
-      products = HomeDemoData.productsFor(subcategoryId: _selectedSubcategoryId);
+      products = HomeDemoData.productsFor(
+        subcategoryId: _selectedSubcategoryId,
+      );
     } else if (_selectedCategoryId != -1) {
       products = HomeDemoData.productsFor(categoryId: _selectedCategoryId);
     } else {
@@ -85,12 +86,12 @@ class _HomeCategoriesBrowseViewState extends State<HomeCategoriesBrowseView> {
     final selectedCategory = _selectedCategory;
     final subcategories = selectedCategory?.subcategories ?? const [];
     final products = _products;
-    final heading = _selectedSubcategory?.name(context) ??
+    final heading =
+        _selectedSubcategory?.name(context) ??
         selectedCategory?.name(context) ??
         (isAr ? 'كل المنتجات' : 'All products');
-    final countLabel = isAr
-        ? '${products.length} منتج'
-        : '${products.length} products';
+    final countLabel =
+        isAr ? '${products.length} منتج' : '${products.length} products';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5FAFD),
@@ -102,9 +103,10 @@ class _HomeCategoriesBrowseViewState extends State<HomeCategoriesBrowseView> {
               title: heading,
               countLabel: countLabel,
               isAll: selectedCategory == null,
-              onBack: widget.showBackButton
-                  ? () => Navigator.of(context).pop()
-                  : null,
+              onBack:
+                  widget.showBackButton
+                      ? () => Navigator.of(context).pop()
+                      : null,
             ),
           ),
           SliverToBoxAdapter(
@@ -137,9 +139,10 @@ class _HomeCategoriesBrowseViewState extends State<HomeCategoriesBrowseView> {
                     const SizedBox(height: 10),
                     HomeSortChip(
                       sort: _sort,
-                      onClear: () => setState(() {
-                        _sort = HomeProductSort.none;
-                      }),
+                      onClear:
+                          () => setState(() {
+                            _sort = HomeProductSort.none;
+                          }),
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -174,18 +177,20 @@ class _HomeCategoriesBrowseViewState extends State<HomeCategoriesBrowseView> {
                           _SubcategoryChip(
                             label: isAr ? 'الكل' : 'All',
                             selected: _selectedSubcategoryId == null,
-                            onTap: () => setState(() {
-                              _selectedSubcategoryId = null;
-                            }),
+                            onTap:
+                                () => setState(() {
+                                  _selectedSubcategoryId = null;
+                                }),
                           ),
                           ...subcategories.map((sub) {
                             return _SubcategoryChip(
                               label: sub.name(context),
                               imageUrl: sub.imageUrl,
                               selected: sub.id == _selectedSubcategoryId,
-                              onTap: () => setState(() {
-                                _selectedSubcategoryId = sub.id;
-                              }),
+                              onTap:
+                                  () => setState(() {
+                                    _selectedSubcategoryId = sub.id;
+                                  }),
                             );
                           }),
                         ],
@@ -211,12 +216,9 @@ class _HomeCategoriesBrowseViewState extends State<HomeCategoriesBrowseView> {
                   crossAxisSpacing: 12,
                   childAspectRatio: 0.62,
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    return HomeProductCard(product: products[index]);
-                  },
-                  childCount: products.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  return HomeProductCard(product: products[index]);
+                }, childCount: products.length),
               ),
             ),
         ],
@@ -249,16 +251,7 @@ class _BrowseHeader extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (!isAll && imageUrl != null)
-            CachedNetworkImage(
-              imageUrl: imageUrl!,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => const ColoredBox(
-                color: AppColors.light,
-              ),
-              errorWidget: (context, url, error) => const ColoredBox(
-                color: AppColors.light,
-              ),
-            )
+            HomeCatalogImage(assetPath: imageUrl!, fit: BoxFit.cover)
           else
             const ColoredBox(color: AppColors.light),
           DecoratedBox(
@@ -364,9 +357,10 @@ class _CategoryAvatar extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: selected ? AppColors.primaryColor : Colors.white,
                   border: Border.all(
-                    color: selected
-                        ? AppColors.primaryColor
-                        : AppColors.borderColor,
+                    color:
+                        selected
+                            ? AppColors.primaryColor
+                            : AppColors.borderColor,
                     width: selected ? 2 : 1,
                   ),
                   boxShadow: [
@@ -381,25 +375,24 @@ class _CategoryAvatar extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: ColoredBox(
-                    color: selected && imageUrl == null
-                        ? AppColors.primaryColor
-                        : AppColors.light,
-                    child: imageUrl == null
-                        ? Icon(
-                            Icons.apps_rounded,
-                            color: selected
-                                ? Colors.white
-                                : AppColors.primaryColor,
-                            size: 22,
-                          )
-                        : CachedNetworkImage(
-                            imageUrl: imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                const PharmacyImageLoading(),
-                            errorWidget: (context, url, error) =>
-                                const PharmacyPlaceholder(size: 22),
-                          ),
+                    color:
+                        selected && imageUrl == null
+                            ? AppColors.primaryColor
+                            : AppColors.light,
+                    child:
+                        imageUrl == null
+                            ? Icon(
+                              Icons.apps_rounded,
+                              color:
+                                  selected
+                                      ? Colors.white
+                                      : AppColors.primaryColor,
+                              size: 22,
+                            )
+                            : HomeCatalogImage(
+                              assetPath: imageUrl!,
+                              fit: BoxFit.cover,
+                            ),
                   ),
                 ),
               ),
@@ -412,7 +405,8 @@ class _CategoryAvatar extends StatelessWidget {
                 style: AppTextStyles.noto14w400.copyWith(
                   fontSize: 11,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? AppColors.primaryColor : AppColors.darkColor,
+                  color:
+                      selected ? AppColors.primaryColor : AppColors.darkColor,
                 ),
               ),
             ],
@@ -452,15 +446,11 @@ class _SubcategoryChip extends StatelessWidget {
               children: [
                 if (imageUrl != null)
                   ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl!,
+                    child: HomeCatalogImage(
+                      assetPath: imageUrl!,
                       width: 24,
                       height: 24,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          const PharmacyImageLoading(),
-                      errorWidget: (context, url, error) =>
-                          const PharmacyPlaceholder(size: 16),
                     ),
                   )
                 else

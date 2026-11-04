@@ -53,7 +53,7 @@ class AddressCubit extends Cubit<AddressCubitState> {
   Future<void> getAllAddresses(BuildContext context) async {
     emit(AddressLoadingState());
     try {
-      final model = await profileServices.getAllAddresses(10, 0, "ASC", "id");
+      final model = await profileServices.getAllAddresses(100, 0, "ASC", "id");
       addresses = model;
       emit(AddressLoadedState(addresses: List<AddressModel>.from(addresses!)));
     } catch (error) {
@@ -77,7 +77,7 @@ class AddressCubit extends Cubit<AddressCubitState> {
   ) async {
     emit(AddressLoadingState());
     try {
-      final model = await profileServices.addNewAddress(
+      final updatedAddresses = await profileServices.addNewAddress(
         address: address,
         city: city,
         gov: gov,
@@ -87,8 +87,6 @@ class AddressCubit extends Cubit<AddressCubitState> {
         apartment: apartment,
       );
 
-      final updatedAddresses = List<AddressModel>.from(addresses ?? []);
-      updatedAddresses.add(model.first);
       addresses = updatedAddresses;
 
       emit(AddressAddedLoadedState(addresses: updatedAddresses));
@@ -114,7 +112,7 @@ class AddressCubit extends Cubit<AddressCubitState> {
   ) async {
     emit(AddressLoadingState());
     try {
-      final editedAddressList = await profileServices.editAddress(
+      final updatedAddresses = await profileServices.editAddress(
         id: id,
         type: type,
         landMark: landMark,
@@ -124,10 +122,6 @@ class AddressCubit extends Cubit<AddressCubitState> {
         apartment: apartment,
         address: address,
       );
-
-      final updatedAddresses = List<AddressModel>.from(addresses ?? []);
-      final index = updatedAddresses.indexWhere((addr) => addr.id == id);
-      if (index != -1) updatedAddresses[index] = editedAddressList.first;
 
       addresses = updatedAddresses;
       emit(AddressEditedLoadedState(addresses: updatedAddresses));
@@ -143,10 +137,7 @@ class AddressCubit extends Cubit<AddressCubitState> {
   Future<void> deleteAddress(int id, BuildContext context) async {
     emit(AddressLoadingState());
     try {
-      await profileServices.deleteAddress(id: id);
-
-      final updatedAddresses =
-          (addresses ?? []).where((address) => address.id != id).toList();
+      final updatedAddresses = await profileServices.deleteAddress(id: id);
       addresses = updatedAddresses;
 
       emit(AddressLoadedState(addresses: updatedAddresses));
@@ -161,17 +152,11 @@ class AddressCubit extends Cubit<AddressCubitState> {
 
   Future<void> toggleDefaultAddress(int id, BuildContext context) async {
     try {
-      final updatedAddresses =
-          (addresses ?? []).map((address) {
-            if (address.id == id) return address.copyWith(isDefault: true);
-            if (address.isDefault) return address.copyWith(isDefault: false);
-            return address;
-          }).toList();
-
+      final updatedAddresses = await profileServices.toggleDefultAddress(
+        id: id,
+      );
       addresses = updatedAddresses;
       emit(AddressLoadedState(addresses: updatedAddresses));
-
-      await profileServices.toggleDefultAddress(id: id);
     } catch (error) {
       if (context.mounted) {
         emit(

@@ -27,14 +27,14 @@ class _RelatedProductsListState extends State<RelatedProductsList> {
       if (!mounted) return;
       context.read<ProductDetailsCubit>().fetchRelatedProducts(
         widget.productId,
-        context,
       );
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.sizeOf(context).height;
+    final size = MediaQuery.sizeOf(context);
+    final productCardHeight = size.width * 0.4 / ProductItem.cardAspectRatio;
 
     return BlocBuilder<ProductDetailsCubit, ProductDetailsState>(
       buildWhen:
@@ -45,7 +45,7 @@ class _RelatedProductsListState extends State<RelatedProductsList> {
       builder: (context, state) {
         if (state is RelatedProductsLoading) {
           return SizedBox(
-            height: screenHeight * 0.4,
+            height: productCardHeight,
             child: const Center(child: CircularProgressIndicator()),
           );
         }
@@ -74,7 +74,7 @@ class _RelatedProductsListState extends State<RelatedProductsList> {
                 ),
               ),
               SizedBox(
-                height: screenHeight * 0.4,
+                height: productCardHeight,
                 child: SuggestionsForYou(
                   relatedProducts: state.relatedProducts,
                 ),
@@ -111,9 +111,11 @@ class _SuggestionsForYouState extends State<SuggestionsForYou> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       itemBuilder: (context, index) {
         final relatedProduct = widget.relatedProducts[index];
-        var isFav = context.read<FavouriteCubit>().isProductFavourite(
-          relatedProduct.id,
-        );
+        var isFav =
+            relatedProduct.isFavorite ||
+            context.read<FavouriteCubit>().isProductFavourite(
+              relatedProduct.id,
+            );
         return Padding(
           padding: const EdgeInsets.only(right: 12, bottom: 10),
           child: SizedBox(
@@ -123,11 +125,16 @@ class _SuggestionsForYouState extends State<SuggestionsForYou> {
               image: relatedProduct.imageUrl ?? "",
               title: relatedProduct.name,
               subtitle: relatedProduct.description ?? "",
-              price: relatedProduct.availableSizes.first.price ?? 0.0,
+              price:
+                  relatedProduct.availableSizes.isNotEmpty
+                      ? relatedProduct.availableSizes.first.price ?? 0
+                      : relatedProduct.finalPrice,
               rating: relatedProduct.averageRating,
               reviews: relatedProduct.ratingsCount,
               discount: getDiscountReltaed(relatedProduct, context),
-              hasDiscount: relatedProduct.discountType != null,
+              hasDiscount:
+                  relatedProduct.discountType != null &&
+                  relatedProduct.availableSizes.isNotEmpty,
               sizesIds: relatedProduct.availableSizes,
               isFav: isFav,
               onFavClick: () {

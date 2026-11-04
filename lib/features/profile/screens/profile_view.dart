@@ -1,6 +1,8 @@
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/features/profile/widgets/confirm_logout_bottom_sheet.dart';
+import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/features/profile/widgets/profile_header_section.dart';
 import 'package:elkawther/features/profile/widgets/profile_list_tile.dart';
 import 'package:elkawther/features/profile/widgets/radio_button_bottom_sheet.dart';
@@ -20,6 +22,14 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ProfileCubit>().getUserData();
+    });
+  }
+
   Future<void> _open(String route, {Object? arguments}) async {
     await Navigator.pushNamed(context, route, arguments: arguments);
     if (mounted) setState(() {});
@@ -60,7 +70,9 @@ class _ProfileViewState extends State<ProfileView> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isAr ? 'حسابك وإعدادات التطبيق' : 'Your account and app settings',
+                  isAr
+                      ? 'حسابك وإعدادات التطبيق'
+                      : 'Your account and app settings',
                   style: AppTextStyles.noto14w400.copyWith(
                     color: AppColors.grey,
                     fontSize: 13,
@@ -97,7 +109,6 @@ class _ProfileViewState extends State<ProfileView> {
                 ProfileListTile(
                   icon: Assets.iconsFavourite2,
                   title: S.of(context).favourite,
-                  iconColor: const Color(0xFFEC4899),
                   onTap: () => _open(Routes.favourite),
                 ),
                 const SizedBox(height: 8),
@@ -129,30 +140,33 @@ class _ProfileViewState extends State<ProfileView> {
                     showModalBottomSheet(
                       context: context,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => RadioButtonsBottomSheet(
-                        valuesList: [
-                          S.of(context).arabic,
-                          S.of(context).english,
-                        ],
-                        selectedValue: currentLocaleCode == 'ar'
-                            ? S.of(context).arabic
-                            : S.of(context).english,
-                        label: S.of(context).language,
-                        onChanged: (value) async {
-                          final newLocale = value == S.of(context).arabic
-                              ? const Locale('ar')
-                              : const Locale('en');
-                          await context.read<LocaleProvider>().setLocale(
-                            newLocale.languageCode,
-                          );
-                          if (!context.mounted) return;
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            Routes.home,
-                            (route) => false,
-                          );
-                        },
-                      ),
+                      builder:
+                          (_) => RadioButtonsBottomSheet(
+                            valuesList: [
+                              S.of(context).arabic,
+                              S.of(context).english,
+                            ],
+                            selectedValue:
+                                currentLocaleCode == 'ar'
+                                    ? S.of(context).arabic
+                                    : S.of(context).english,
+                            label: S.of(context).language,
+                            onChanged: (value) async {
+                              final newLocale =
+                                  value == S.of(context).arabic
+                                      ? const Locale('ar')
+                                      : const Locale('en');
+                              await context.read<LocaleProvider>().setLocale(
+                                newLocale.languageCode,
+                              );
+                              if (!context.mounted) return;
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                Routes.home,
+                                (route) => false,
+                              );
+                            },
+                          ),
                     );
                   },
                 ),
@@ -164,14 +178,18 @@ class _ProfileViewState extends State<ProfileView> {
                 ProfileListTile(
                   icon: Assets.iconsTerms2,
                   title: S.of(context).terms_and_conditions,
-                  onTap: () =>
-                      Navigator.pushNamed(context, Routes.termsAndConditions),
+                  onTap:
+                      () => Navigator.pushNamed(
+                        context,
+                        Routes.termsAndConditions,
+                      ),
                 ),
                 ProfileListTile(
                   icon: Assets.iconsPolicy2,
                   title: S.of(context).privacy_policy,
-                  onTap: () =>
-                      Navigator.pushNamed(context, Routes.privacyAndPolicy),
+                  onTap:
+                      () =>
+                          Navigator.pushNamed(context, Routes.privacyAndPolicy),
                 ),
                 const SizedBox(height: 8),
                 ProfileListTile(
@@ -182,17 +200,20 @@ class _ProfileViewState extends State<ProfileView> {
                     showModalBottomSheet(
                       context: context,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => ConfirmLogoutBottomSheet(
-                        label: S.of(context).exit_app,
-                        onConfirm: () {
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            Routes.chooseUserType,
-                            (route) => false,
-                          );
-                        },
-                        onCancel: () => Navigator.pop(context),
-                      ),
+                      builder:
+                          (_) => ConfirmLogoutBottomSheet(
+                            label: S.of(context).exit_app,
+                            onConfirm: () async {
+                              await context.read<AuthCubit>().logout();
+                              if (!context.mounted) return;
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                Routes.chooseUserType,
+                                (route) => false,
+                              );
+                            },
+                            onCancel: () => Navigator.pop(context),
+                          ),
                     );
                   },
                 ),
@@ -204,24 +225,27 @@ class _ProfileViewState extends State<ProfileView> {
                     showModalBottomSheet(
                       context: context,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => ConfirmLogoutBottomSheet(
-                        label: S.of(context).delete_account,
-                        confirmColor: const Color(0xFFEF4444),
-                        onConfirm: () {
-                          ToastMessage().displayMessageToast(
-                            isAr
-                                ? 'تم حذف الحساب محلياً'
-                                : 'Account deleted locally',
-                            AppColors.teal,
-                          );
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            Routes.login,
-                            (route) => false,
-                          );
-                        },
-                        onCancel: () => Navigator.pop(context),
-                      ),
+                      builder:
+                          (_) => ConfirmLogoutBottomSheet(
+                            label: S.of(context).delete_account,
+                            confirmColor: const Color(0xFFEF4444),
+                            onConfirm: () async {
+                              await context.read<AuthCubit>().logout();
+                              if (!context.mounted) return;
+                              ToastMessage().displayMessageToast(
+                                isAr
+                                    ? 'تم حذف الحساب محلياً'
+                                    : 'Account deleted locally',
+                                AppColors.teal,
+                              );
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                Routes.login,
+                                (route) => false,
+                              );
+                            },
+                            onCancel: () => Navigator.pop(context),
+                          ),
                     );
                   },
                 ),

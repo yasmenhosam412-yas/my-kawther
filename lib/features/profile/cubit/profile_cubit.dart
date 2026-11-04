@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:elkawther/core/errors/errors.dart';
 import 'package:elkawther/features/profile/models/user_model.dart';
 import 'package:elkawther/features/profile/services/profile_services.dart';
+import 'package:elkawther/features/profile/data/profile_local_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:elkawther/features/checkout/models/delivery_prices.dart';
@@ -14,6 +15,31 @@ class ProfileCubit extends Cubit<ProfileCubitState> {
   ProfileCubit(this.profileServices) : super(ProfileCubitInitialState());
 
   List<DeliveryPrice>? deliveryPrices;
+  UserModel? userData;
+
+  Future<void> getUserData() async {
+    userData = null;
+    emit(ProfileUserLoadingState());
+    try {
+      final user = await profileServices.fetchUserData();
+      if (user == null) {
+        userData = null;
+        emit(ProfileUserUnavailableState());
+        return;
+      }
+      userData = user;
+      ProfileLocalStore.instance
+        ..name = user.name
+        ..email = user.email
+        ..phone = user.phone;
+      emit(ProfileUserLoadedState(user));
+    } catch (error) {
+      final message = error is DioException
+          ? Errors.fromDioError(error)
+          : Errors(message: _getErrorMessage(error));
+      emit(ProfileUserErrorState(message: message));
+    }
+  }
 
   String _getErrorMessage(Object error) {
     if (error is DioException) {
@@ -139,6 +165,22 @@ abstract class ProfileCubitState {}
 class ProfileCubitInitialState extends ProfileCubitState {}
 
 class ProfileCubitLoadingState extends ProfileCubitState {}
+
+class ProfileUserLoadingState extends ProfileCubitState {}
+
+class ProfileUserLoadedState extends ProfileCubitState {
+  final UserModel user;
+
+  ProfileUserLoadedState(this.user);
+}
+
+class ProfileUserUnavailableState extends ProfileCubitState {}
+
+class ProfileUserErrorState extends ProfileCubitState {
+  final Errors message;
+
+  ProfileUserErrorState({required this.message});
+}
 
 class ProfileCubitDeliveryPricesState extends ProfileCubitState {
   final List<DeliveryPrice> deliveryPrices;

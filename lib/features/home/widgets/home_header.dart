@@ -1,75 +1,114 @@
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/pharmacy_logo.dart';
-import 'package:elkawther/features/home/data/home_cart_store.dart';
+import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
+import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
 import 'package:elkawther/generated/assets.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class HomeHeader extends StatelessWidget {
+class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
 
   @override
+  State<HomeHeader> createState() => _HomeHeaderState();
+}
+
+class _HomeHeaderState extends State<HomeHeader> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && context.read<AuthCubit>().state is AuthLoadedLogin) {
+        context.read<ProfileCubit>().getUserData();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const PharmacyLogo(size: 52),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${S.of(context).welcome} 👋',
-                style: AppTextStyles.noto14w400.copyWith(
-                  color: AppColors.gray,
-                  fontSize: 13,
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, authState) {
+        return BlocBuilder<ProfileCubit, ProfileCubitState>(
+          builder: (context, profileState) {
+            final userName =
+                authState is AuthVisitor
+                    ? S.of(context).guest
+                    : profileState is ProfileUserLoadedState
+                    ? profileState.user.name
+                    : S.of(context).guest;
+
+            return Row(
+              children: [
+                const PharmacyLogo(size: 52),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${S.of(context).welcome} 👋',
+                        style: AppTextStyles.noto14w400.copyWith(
+                          color: AppColors.gray,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.noto24w500.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                          color: AppColors.darkColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                S.of(context).guest,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.noto24w500.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                  color: AppColors.darkColor,
+                BlocBuilder<CartCubit, CartState>(
+                  builder: (context, cartState) {
+                    final count = context.read<CartCubit>().cart.fold<int>(
+                      0,
+                      (sum, item) => sum + item.quantity,
+                    );
+                    return _HeaderIconButton(
+                      asset: Assets.cart,
+                      count: count,
+                      onTap: () => HomeNavigation.openCart(context),
+                    );
+                  },
                 ),
-              ),
-            ],
-          ),
-        ),
-        ListenableBuilder(
-          listenable: HomeCartStore.instance,
-          builder: (context, _) {
-            return _HeaderIconButton(
-              asset: Assets.cart,
-              count: HomeCartStore.instance.count,
-              onTap: () => HomeNavigation.openCart(context),
+                const SizedBox(width: 8),
+                _HeaderIconButton(
+                  asset: Assets.iconsNotificationIcon,
+                  count: 3,
+                  onTap: () => HomeNavigation.openNotifications(context),
+                ),
+                const SizedBox(width: 8),
+                _HeaderIconButton(
+                  asset: Assets.iconsWhatsappIcon,
+                  onTap: () async {
+                    final uri = Uri.parse('https://wa.me/');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                ),
+              ],
             );
           },
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          asset: Assets.iconsNotificationIcon,
-          count: 3,
-          onTap: () => HomeNavigation.openNotifications(context),
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          asset: Assets.iconsWhatsappIcon,
-          onTap: () async {
-            final uri = Uri.parse('https://wa.me/');
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 }

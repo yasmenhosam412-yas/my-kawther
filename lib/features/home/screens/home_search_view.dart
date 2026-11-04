@@ -45,7 +45,9 @@ class _HomeSearchViewState extends State<HomeSearchView> {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return HomeDemoData.catalogCategories;
     return HomeDemoData.catalogCategories
-        .where((category) => category.name(context).toLowerCase().contains(query))
+        .where(
+          (category) => category.name(context).toLowerCase().contains(query),
+        )
         .toList();
   }
 
@@ -57,7 +59,7 @@ class _HomeSearchViewState extends State<HomeSearchView> {
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final results = _results;
-    const popular = HomeDemoData.bestSelling;
+    final popular = HomeDemoData.bestSelling;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5FAFD),
@@ -99,20 +101,21 @@ class _HomeSearchViewState extends State<HomeSearchView> {
                             ),
                           ),
                         ),
-                        suffixIcon: _hasQuery
-                            ? IconButton(
-                                onPressed: () {
-                                  _controller.clear();
-                                  _applyQuery('');
-                                  _focusNode.requestFocus();
-                                },
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  color: AppColors.grey,
-                                  size: 20,
-                                ),
-                              )
-                            : null,
+                        suffixIcon:
+                            _hasQuery
+                                ? IconButton(
+                                  onPressed: () {
+                                    _controller.clear();
+                                    _applyQuery('');
+                                    _focusNode.requestFocus();
+                                  },
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    color: AppColors.grey,
+                                    size: 20,
+                                  ),
+                                )
+                                : null,
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
@@ -139,112 +142,114 @@ class _HomeSearchViewState extends State<HomeSearchView> {
               ),
             ),
             Expanded(
-              child: !_hasQuery
-                  ? _IdleSearch(
-                      isAr: isAr,
-                      categories: HomeDemoData.catalogCategories,
-                      popular: popular,
-                      onCategoryTap: (category) {
-                        HomeNavigation.openCategoryProducts(context, category);
-                      },
-                      onSuggestionTap: (text) {
-                        _controller.text = text;
-                        _controller.selection = TextSelection.collapsed(
-                          offset: text.length,
-                        );
-                        _applyQuery(text);
-                      },
-                    )
-                  : results.isEmpty
+              child:
+                  !_hasQuery
+                      ? _IdleSearch(
+                        isAr: isAr,
+                        categories: HomeDemoData.catalogCategories,
+                        popular: popular,
+                        onCategoryTap: (category) {
+                          HomeNavigation.openCategoryProducts(
+                            context,
+                            category,
+                          );
+                        },
+                        onSuggestionTap: (text) {
+                          _controller.text = text;
+                          _controller.selection = TextSelection.collapsed(
+                            offset: text.length,
+                          );
+                          _applyQuery(text);
+                        },
+                      )
+                      : results.isEmpty
                       ? _EmptySearch(query: _query.trim())
                       : CustomScrollView(
-                          slivers: [
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      isAr
-                                          ? '${results.length} نتيجة'
-                                          : '${results.length} results',
-                                      style: AppTextStyles.noto14w400.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.darkColor,
-                                      ),
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    isAr
+                                        ? '${results.length} نتيجة'
+                                        : '${results.length} results',
+                                    style: AppTextStyles.noto14w400.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.darkColor,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      isAr
-                                          ? 'عن “${_query.trim()}”'
-                                          : 'for “${_query.trim()}”',
-                                      style: AppTextStyles.noto14w400.copyWith(
-                                        color: AppColors.grey,
-                                      ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    isAr
+                                        ? 'عن “${_query.trim()}”'
+                                        : 'for “${_query.trim()}”',
+                                    style: AppTextStyles.noto14w400.copyWith(
+                                      color: AppColors.grey,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                            if (_matchedCategories.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: SizedBox(
-                                  height: 42,
-                                  child: ListView.separated(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: _matchedCategories.length,
-                                    separatorBuilder: (_, __) =>
-                                        const SizedBox(width: 8),
-                                    itemBuilder: (context, index) {
-                                      final category = _matchedCategories[index];
-                                      return ActionChip(
-                                        backgroundColor: AppColors.light,
-                                        side: BorderSide.none,
-                                        label: Text(
-                                          category.name(context),
-                                          style: AppTextStyles.noto14w400
-                                              .copyWith(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.primaryColor,
-                                          ),
-                                        ),
-                                        onPressed: () {
-                                          HomeNavigation.openCategoryProducts(
-                                            context,
-                                            category,
-                                          );
-                                        },
-                                      );
-                                    },
+                          ),
+                          if (_matchedCategories.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height: 42,
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
                                   ),
-                                ),
-                              ),
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                              sliver: SliverGrid(
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 14,
-                                  crossAxisSpacing: 12,
-                                  childAspectRatio: 0.62,
-                                ),
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    return HomeProductCard(
-                                      product: results[index],
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _matchedCategories.length,
+                                  separatorBuilder:
+                                      (_, __) => const SizedBox(width: 8),
+                                  itemBuilder: (context, index) {
+                                    final category = _matchedCategories[index];
+                                    return ActionChip(
+                                      backgroundColor: AppColors.light,
+                                      side: BorderSide.none,
+                                      label: Text(
+                                        category.name(context),
+                                        style: AppTextStyles.noto14w400
+                                            .copyWith(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.primaryColor,
+                                            ),
+                                      ),
+                                      onPressed: () {
+                                        HomeNavigation.openCategoryProducts(
+                                          context,
+                                          category,
+                                        );
+                                      },
                                     );
                                   },
-                                  childCount: results.length,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                            sliver: SliverGrid(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    mainAxisSpacing: 14,
+                                    crossAxisSpacing: 12,
+                                    childAspectRatio: 0.62,
+                                  ),
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                return HomeProductCard(product: results[index]);
+                              }, childCount: results.length),
+                            ),
+                          ),
+                        ],
+                      ),
             ),
           ],
         ),
@@ -390,9 +395,7 @@ class _EmptySearch extends StatelessWidget {
             Text(
               query,
               textAlign: TextAlign.center,
-              style: AppTextStyles.noto14w400.copyWith(
-                color: AppColors.grey,
-              ),
+              style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
             ),
           ],
         ),

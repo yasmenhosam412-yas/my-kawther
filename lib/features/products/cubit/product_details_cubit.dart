@@ -1,6 +1,5 @@
 import 'package:elkawther/core/errors/errors.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 
 import 'package:elkawther/features/products/models/related_product_model.dart';
@@ -12,26 +11,34 @@ class ProductDetailsCubit extends Cubit<ProductDetailsState> {
 
   final ProductDetailsService _service;
 
-  Future<void> fetchProductDetails(int productId, BuildContext context) async {
+  Future<void> fetchProductDetails(int productId) async {
+    if (isClosed) return;
     emit(ProductDetailsLoading());
     try {
       final product = await _service.getProductDetails(productId);
+      if (isClosed) return;
       emit(ProductDetailsLoaded(product));
     } on DioException catch (e) {
+      if (isClosed) return;
       emit(ProductDetailsError(Errors.fromDioError(e)));
     } catch (e) {
+      if (isClosed) return;
       emit(ProductDetailsError(Errors(message: e.toString())));
     }
   }
 
-  Future<void> fetchRelatedProducts(int productId, BuildContext context) async {
+  Future<void> fetchRelatedProducts(int productId) async {
+    if (isClosed) return;
     emit(RelatedProductsLoading());
     try {
       final related = await _service.getRelatedProducts(productId);
+      if (isClosed) return;
       emit(RelatedProductsLoaded(related));
     } on DioException catch (e) {
+      if (isClosed) return;
       emit(RelatedProductsError(Errors.fromDioError(e).message));
     } catch (e) {
+      if (isClosed) return;
       emit(RelatedProductsError(e.toString()));
     }
   }

@@ -105,13 +105,18 @@ class Cubon {
   });
 
   factory Cubon.fromJson(Map<String, dynamic> json) {
+    double asDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
     return Cubon(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
       code: json['code'] ?? '',
-      discount: (json['discount'] ?? 0).toDouble(),
-      totalAfterDiscount: (json['total_after_discount'] ?? 0).toDouble(),
-      originalTotal: (json['original_total'] ?? 0).toDouble(),
+      discount: asDouble(json['discount']),
+      totalAfterDiscount: asDouble(json['total_after_discount']),
+      originalTotal: asDouble(json['original_total']),
     );
   }
 }
@@ -142,17 +147,50 @@ class CartModel {
   });
 
   factory CartModel.fromJson(Map<String, dynamic> json) {
+    final product =
+        json['product'] is Map<String, dynamic>
+            ? json['product'] as Map<String, dynamic>
+            : const <String, dynamic>{};
+    final productSize =
+        json['product_size'] is Map<String, dynamic>
+            ? json['product_size'] as Map<String, dynamic>
+            : json['size'] is Map<String, dynamic>
+            ? json['size'] as Map<String, dynamic>
+            : const <String, dynamic>{};
+    final quantity = _parseCartInt(
+      json['quantity'] ?? json['product_quantity'],
+    );
+    final discountedPrice = _parseCartDouble(
+      json['discounted_price'] ?? json['price_at_time'],
+    );
+    final originalPrice = _parseCartDouble(
+      json['original_price'] ?? productSize['original_price'],
+    );
+    final sizeId =
+        json['product_size_id'] ??
+        json['size_id'] ??
+        (json['size'] is Map ? productSize['id'] : json['size']);
+
     return CartModel(
-      productId: json['product_id'],
-      id: json['id'],
-      name: json['name'],
-      originalPrice: double.parse(json['original_price'].toString()),
-      discountedPrice: double.parse(json['discounted_price'].toString()),
-      discountPercentage: json['discount_percentage'],
-      quantity: json['quantity'],
-      mainImage: json['main_image'],
-      lineTotal: double.parse(json['line_total'].toString()),
-      size: json['size'].toString(),
+      productId: _parseCartInt(json['product_id'] ?? product['id']),
+      id: _parseCartInt(json['id']),
+      name: (json['name'] ?? product['name'] ?? '').toString(),
+      originalPrice: originalPrice,
+      discountedPrice: discountedPrice,
+      discountPercentage: _parseCartInt(json['discount_percentage']),
+      quantity: quantity,
+      mainImage:
+          (json['main_image'] ??
+                  json['image_url'] ??
+                  product['image_url'] ??
+                  product['image'] ??
+                  '')
+              .toString(),
+      lineTotal: _parseCartDouble(
+        json['line_total'] ?? json['total_price'],
+        fallback: discountedPrice * quantity,
+      ),
+      size: sizeId?.toString() ?? '',
     );
   }
 
@@ -181,6 +219,17 @@ class CartModel {
       size: size ?? this.size,
     );
   }
+}
+
+int _parseCartInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _parseCartDouble(dynamic value, {double fallback = 0}) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '') ?? fallback;
 }
 
 class CartItemData {

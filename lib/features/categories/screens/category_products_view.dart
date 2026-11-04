@@ -152,19 +152,11 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
         filter == S.of(context).price_low_to_high ||
         filter == S.of(context).top_rated) {
       _filteredProducts.sort((a, b) {
-        price(CategoryProductsData p) =>
-            p.availableSizes
-                ?.firstWhere(
-                  (s) => (s.stock ?? 0) > 0,
-                  orElse: () => p.availableSizes!.first,
-                )
-                .price ??
-            0;
         if (filter == S.of(context).price_high_to_low) {
-          return price(b).compareTo(price(a));
+          return _productPrice(b).compareTo(_productPrice(a));
         }
         if (filter == S.of(context).price_low_to_high) {
-          return price(a).compareTo(price(b));
+          return _productPrice(a).compareTo(_productPrice(b));
         }
         if (filter == S.of(context).top_rated) {
           return (b.rate ?? 0).compareTo(a.rate ?? 0);
@@ -173,6 +165,18 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
       });
     }
     setState(() {});
+  }
+
+  double _productPrice(CategoryProductsData product) {
+    final sizes = product.availableSizes ?? const <AvailableSize>[];
+    for (final size in sizes) {
+      if ((size.stock ?? 0) > 0) return size.price ?? 0;
+    }
+    if (sizes.isNotEmpty) return sizes.first.price ?? 0;
+    return product.finalPrice ??
+        product.priceAfterDiscount ??
+        double.tryParse(product.price ?? '') ??
+        0;
   }
 
   void _showFilterBottomSheet() {
@@ -506,7 +510,7 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
               image: product.imageUrl ?? Assets.imagesCattest,
               title: product.name ?? '',
               subtitle: product.description ?? '',
-              price: product.availableSizes?.first.price ?? 0.0,
+              price: _productPrice(product),
               hasDiscount: product.discountType != null,
               discount: getDiscount(product, context),
               rating: product.rate ?? 0.0,

@@ -1,18 +1,21 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
-import 'package:elkawther/features/home/data/home_cart_store.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/data/home_favorites_store.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
-import 'package:elkawther/generated/assets.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
+import 'package:elkawther/features/home/widgets/home_commerce_buttons.dart';
+import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
 import 'package:elkawther/generated/l10n.dart';
+import 'package:elkawther/core/widgets/guest_user_dialog.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class HomeProductCard extends StatefulWidget {
+  static const double cardAspectRatio = 0.62;
+
   const HomeProductCard({super.key, required this.product});
 
   final HomeDemoProduct product;
@@ -49,7 +52,8 @@ class _HomeProductCardState extends State<HomeProductCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              AspectRatio(
+                aspectRatio: 1.35,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -60,14 +64,9 @@ class _HomeProductCardState extends State<HomeProductCard> {
                         ),
                         child: ColoredBox(
                           color: AppColors.light,
-                          child: CachedNetworkImage(
-                            imageUrl: product.imageUrl,
+                          child: HomeCatalogImage(
+                            assetPath: product.imageUrl,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                const PharmacyImageLoading(),
-                            errorWidget: (context, url, error) => const Center(
-                              child: PharmacyPlaceholder(size: 64),
-                            ),
                           ),
                         ),
                       ),
@@ -98,58 +97,56 @@ class _HomeProductCardState extends State<HomeProductCard> {
                     PositionedDirectional(
                       top: 8,
                       end: 8,
-                      child: Material(
-                        color: Colors.white,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            HomeFavoritesStore.instance.toggle(product);
-                            setState(() {});
-                          },
-                          child: SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: Center(
-                              child: SvgPicture.asset(
-                                isFav ? Assets.iconsFav2 : Assets.iconsFav,
-                                width: 15,
-                                height: 15,
-                              ),
-                            ),
-                          ),
-                        ),
+                      child: HomeFavoriteButton(
+                        isFavorite: isFav,
+                        onPressed: () {
+                          HomeFavoritesStore.instance.toggle(product);
+                          setState(() {});
+                        },
                       ),
                     ),
                     PositionedDirectional(
                       bottom: -16,
                       end: 10,
-                      child: Material(
-                        color: AppColors.primaryColor,
-                        shape: const CircleBorder(),
-                        elevation: 4,
-                        shadowColor: AppColors.primaryColor.withOpacity(0.4),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            HomeCartStore.instance.add(product);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(S.of(context).addedToCart),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          child: const SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: Icon(
-                              Icons.add_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ),
+                      child: HomeCartAddButton(
+                        onPressed: () {
+                          final authState = context.read<AuthCubit>().state;
+                          if (authState is! AuthLoadedLogin &&
+                              authState is! AuthLoadedRegister) {
+                            showGuestLoginDialog(context);
+                            return;
+                          }
+                          final sizeId = product.productSizeId;
+                          if (sizeId == null || sizeId <= 0) {
+                            HomeNavigation.openProduct(context, product);
+                            return;
+                          }
+                          context
+                              .read<CartCubit>()
+                              .addItem(product.id, 1, sizeId)
+                              .then((result) {
+                                if (!context.mounted) return;
+                                result.fold(
+                                  (error) => ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        error.localizedMessage(context),
+                                      ),
+                                    ),
+                                  ),
+                                  (_) => ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(S.of(context).addedToCart),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  ),
+                                );
+                              });
+                        },
                       ),
                     ),
                   ],
@@ -171,47 +168,50 @@ class _HomeProductCardState extends State<HomeProductCard> {
                         height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: () => HomeNavigation.openRatings(context, product),
-                      child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8E8),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            color: Color(0xFFFFC107),
-                            size: 13,
+                    if (product.reviews > 0) ...[
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap:
+                            () => HomeNavigation.openRatings(context, product),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
                           ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${product.rating}',
-                            style: AppTextStyles.noto14w400.copyWith(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.darkColor,
-                            ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8E8),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '(${product.reviews})',
-                            style: AppTextStyles.noto14w400.copyWith(
-                              fontSize: 10,
-                              color: AppColors.grey,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Color(0xFFFFC107),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${product.rating}',
+                                style: AppTextStyles.noto14w400.copyWith(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.darkColor,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '(${product.reviews})',
+                                style: AppTextStyles.noto14w400.copyWith(
+                                  fontSize: 10,
+                                  color: AppColors.grey,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       '${numberFormat.format(product.price)} $currency',
@@ -255,7 +255,7 @@ class HomeProductsRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: SizedBox(
-        height: 262,
+        height: 158 / HomeProductCard.cardAspectRatio,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.zero,
@@ -274,11 +274,7 @@ class HomeProductsRow extends StatelessWidget {
 }
 
 class HomeChipsRow extends StatelessWidget {
-  const HomeChipsRow({
-    super.key,
-    required this.items,
-    required this.products,
-  });
+  const HomeChipsRow({super.key, required this.items, required this.products});
 
   final List<HomeDemoChip> items;
   final List<HomeDemoProduct> products;
@@ -334,50 +330,47 @@ class HomeCategoryItemStatic extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-      width: 86,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryColor.withOpacity(0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.cover,
+        width: 86,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
               width: 72,
               height: 72,
-              placeholder: (context, url) => const PharmacyImageLoading(),
-              errorWidget: (context, url, error) =>
-                  const PharmacyPlaceholder(size: 40),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryColor.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: HomeCatalogImage(
+                assetPath: imageUrl,
+                fit: BoxFit.cover,
+                width: 72,
+                height: 72,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.noto14w400.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkColor,
-              height: 1.2,
+            const SizedBox(height: 8),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.noto14w400.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkColor,
+                height: 1.2,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

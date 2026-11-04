@@ -1,25 +1,24 @@
 import 'dart:io';
 
+import 'package:elkawther/core/routes/routes.dart';
+import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/core/theme/app_padding.dart';
+import 'package:elkawther/core/toasts/toasts.dart';
 import 'package:elkawther/features/checkout/data/checkout_local_store.dart';
 import 'package:elkawther/features/checkout/widgets/address.dart';
 import 'package:elkawther/features/checkout/widgets/payment_option_zain.dart';
-import 'package:elkawther/features/home/data/home_cart_store.dart';
-import 'package:elkawther/features/home/data/home_demo_data.dart';
-import 'package:elkawther/features/orders/data/orders_local_store.dart';
-import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
-import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
-
-import 'package:elkawther/core/toasts/toasts.dart';
-import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_colors.dart';
-import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/core/routes/routes.dart';
-import 'package:elkawther/features/profile/models/profile_models.dart';
+import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
 import 'package:elkawther/features/addresses/widgets/build_address_bottom_sheet.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
+import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
+import 'package:elkawther/features/cart/models/cart_model.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
+import 'package:elkawther/features/profile/models/profile_models.dart';
+import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
+import 'package:elkawther/generated/l10n.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 class CheckOutView extends StatefulWidget {
   const CheckOutView({super.key});
@@ -30,20 +29,30 @@ class CheckOutView extends StatefulWidget {
 
 class _CheckOutViewState extends State<CheckOutView> {
   final _store = CheckoutLocalStore.instance;
-  final _cart = HomeCartStore.instance;
   final notesController = TextEditingController();
   final promoCodeController = TextEditingController();
-  final numberController = TextEditingController(text: CheckoutLocalStore.zainNumber);
-  final creditController = TextEditingController(text: CheckoutLocalStore.qiCard);
+  final numberController = TextEditingController(
+    text: CheckoutLocalStore.zainNumber,
+  );
+  final creditController = TextEditingController(
+    text: CheckoutLocalStore.qiCard,
+  );
   late final TextEditingController phoneController;
+  AddressModel? _selectedAddress;
   File? image;
   String transferMethod = 'cash';
-  bool promoApplied = false;
 
   @override
   void initState() {
     super.initState();
     phoneController = TextEditingController(text: '01012345678');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<CartCubit>().loadCart(context);
+      if (context.read<AddressCubit>().addresses == null) {
+        context.read<AddressCubit>().getAllAddresses(context);
+      }
+    });
   }
 
   @override
@@ -56,159 +65,284 @@ class _CheckOutViewState extends State<CheckOutView> {
     super.dispose();
   }
 
-  List<HomeCartLine> get _lines {
-    if (_cart.lines.isNotEmpty) return _cart.lines;
-    return HomeDemoData.bestSelling
-        .take(2)
-        .map((product) => HomeCartLine(product: product))
-        .toList();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final cartCubit = context.watch<CartCubit>();
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final items = _lines;
-    final address = _store.current;
+    final items = cartCubit.cart;
+    final addressCubit = context.watch<AddressCubit>();
+    final availableAddresses = addressCubit.addresses ?? const <AddressModel>[];
+    final address =
+        _selectedAddress ??
+        addressCubit.getDefaultAddress() ??
+        (availableAddresses.isNotEmpty ? availableAddresses.first : null);
     final format = NumberFormat('#,##0');
-    final subtotal = items.fold<double>(0, (sum, line) => sum + line.lineTotal);
-    final delivery = _store.deliveryFeeFor(address);
-    final discount = promoApplied ? subtotal * CheckoutLocalStore.promoPercent : 0.0;
+    final subtotal = cartCubit.subtotal;
+    final delivery = address == null ? 0.0 : _store.deliveryFeeFor(address);
+    final discount = cartCubit.discount;
     final total = subtotal - discount + delivery;
 
-    return ProfileScaffold(
-      title: S.of(context).checkout,
-      subtitle: isAr ? 'راجع العنوان والدفع قبل التأكيد' : 'Review address and payment',
-      bottom: ProfilePrimaryButton(
-        title: S.of(context).confirmOrder,
-        onPressed: () => _confirm(address),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          Row(
-            children: [
-              Text(
-                S.of(context).delivery_address,
-                style: AppTextStyles.noto16w400.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.darkColor,
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () {
-                  showDisplayAddressesBottomSheet(
+    return BlocListener<CartCubit, CartState>(
+      listener: (context, state) {
+        if (state is CartError) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
+        } else if (state is CartLoaded && state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!.localizedMessage(context)),
+            ),
+          );
+        } else if (state is CouponApplied) {
+          ToastMessage().displayMessageToast(
+            S.of(context).approved,
+            AppColors.teal,
+          );
+          promoCodeController.clear();
+        } else if (state is OrderConfirmed) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            Routes.checkoutSuccess,
+            (route) => false,
+            arguments: {
+              'points': state.data.pointsEarned,
+              'gift': state.data.giftDescription,
+            },
+          );
+        }
+      },
+      child: ProfileScaffold(
+        title: S.of(context).checkout,
+        subtitle:
+            items.isEmpty
+                ? S.of(context).cartEmptySubtitle
+                : isAr
+                ? 'راجع العنوان والدفع قبل التأكيد'
+                : 'Review address and payment',
+        bottom: ProfilePrimaryButton(
+          title:
+              items.isEmpty
+                  ? S.of(context).startShopping
+                  : S.of(context).confirmOrder,
+          onPressed:
+              items.isEmpty
+                  ? () => Navigator.pushNamedAndRemoveUntil(
                     context,
-                    onAddressSelected: (_) => setState(() {}),
-                  );
-                },
-                child: Text(
-                  S.of(context).change,
-                  style: AppTextStyles.noto14w400.copyWith(
-                    color: AppColors.primaryColor,
-                    fontWeight: FontWeight.w800,
+                    Routes.home,
+                    (route) => false,
+                  )
+                  : context.read<CartCubit>().state is OrderConfirmLoading
+                  ? null
+                  : () => _confirm(address),
+        ),
+        body:
+            items.isEmpty
+                ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 56,
+                          color: AppColors.grey.withOpacity(0.7),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          S.of(context).cartEmpty,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.noto16w400.copyWith(
+                            color: AppColors.darkColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          S.of(context).cartEmptySubtitle,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.noto14w400.copyWith(
+                            color: AppColors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                )
+                : ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          S.of(context).delivery_address,
+                          style: AppTextStyles.noto16w400.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.darkColor,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            showDisplayAddressesBottomSheet(
+                              context,
+                              selectedAddress: address,
+                              onAddressSelected:
+                                  (selected) => setState(
+                                    () => _selectedAddress = selected,
+                                  ),
+                            );
+                          },
+                          child: Text(
+                            S.of(context).change,
+                            style: AppTextStyles.noto14w400.copyWith(
+                              color: AppColors.primaryColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (address != null)
+                      AddressWidget(
+                        addressName: address.address ?? '',
+                        addressDetails: address.city ?? '',
+                        location: address.landmark ?? '',
+                        isPharm: address.isPharmacy ?? false,
+                        apartment: address.apartment ?? '',
+                        type: address.type ?? 'home',
+                        phoneNumber: phoneController.text,
+                        phoneController: phoneController,
+                      )
+                    else
+                      ProfileFormCard(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.location_off_outlined,
+                              color: AppColors.grey,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                S.of(context).noAddressesFound,
+                                style: AppTextStyles.noto14w400.copyWith(
+                                  color: AppColors.darkColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed:
+                                  () => Navigator.pushNamed(
+                                    context,
+                                    Routes.addNewAddress,
+                                  ),
+                              child: Text(S.of(context).add),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Text(
+                      S.of(context).paymentTool,
+                      style: AppTextStyles.noto16w400.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    PaymentMethodWidget(
+                      numberController: numberController,
+                      creditController: creditController,
+                      onImagePicked: (picked) => setState(() => image = picked),
+                      onPaymentSelected:
+                          (method) => setState(() => transferMethod = method),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      S.of(context).order_list,
+                      style: AppTextStyles.noto16w400.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...items.map(_itemCard),
+                    const SizedBox(height: 8),
+                    _promoField(),
+                    const SizedBox(height: 12),
+                    ProfileFormCard(
+                      child: Column(
+                        children: [
+                          _priceRow(
+                            S.of(context).subtotal,
+                            format.format(subtotal),
+                          ),
+                          const SizedBox(height: 8),
+                          _priceRow(
+                            S.of(context).deliveryFee,
+                            format.format(delivery),
+                          ),
+                          const SizedBox(height: 8),
+                          _priceRow(
+                            S.of(context).discount,
+                            format.format(discount),
+                          ),
+                          const Divider(height: 20),
+                          _priceRow(
+                            S.of(context).total,
+                            format.format(total),
+                            isTotal: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      S.of(context).do_you_have_a_comment,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: notesController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primaryColor.withOpacity(0.12),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primaryColor.withOpacity(0.12),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    const SizedBox(height: AppPadding.medium),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          AddressWidget(
-            addressName: address.address ?? '',
-            addressDetails: address.city ?? '',
-            location: address.landmark ?? '',
-            isPharm: address.isPharmacy ?? false,
-            apartment: address.apartment ?? '',
-            type: address.type ?? 'home',
-            phoneNumber: phoneController.text,
-            phoneController: phoneController,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            S.of(context).paymentTool,
-            style: AppTextStyles.noto16w400.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.darkColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          PaymentMethodWidget(
-            numberController: numberController,
-            creditController: creditController,
-            onImagePicked: (picked) => setState(() => image = picked),
-            onPaymentSelected: (method) => setState(() => transferMethod = method),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            S.of(context).order_list,
-            style: AppTextStyles.noto16w400.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.darkColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ...items.map(_itemCard),
-          const SizedBox(height: 8),
-          _promoField(),
-          const SizedBox(height: 12),
-          ProfileFormCard(
-            child: Column(
-              children: [
-                _priceRow(S.of(context).subtotal, format.format(subtotal)),
-                const SizedBox(height: 8),
-                _priceRow(S.of(context).deliveryFee, format.format(delivery)),
-                const SizedBox(height: 8),
-                _priceRow(S.of(context).discount, format.format(discount)),
-                const Divider(height: 20),
-                _priceRow(
-                  S.of(context).total,
-                  format.format(total),
-                  isTotal: true,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            S.of(context).do_you_have_a_comment,
-            style: AppTextStyles.noto14w400.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.darkColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: notesController,
-            maxLines: 4,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
-                  color: AppColors.primaryColor.withOpacity(0.12),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
-                  color: AppColors.primaryColor.withOpacity(0.12),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.primaryColor),
-              ),
-              contentPadding: const EdgeInsets.all(12),
-            ),
-          ),
-          const SizedBox(height: AppPadding.medium),
-        ],
       ),
     );
   }
 
-  Widget _itemCard(HomeCartLine line) {
-    final product = line.product;
+  Widget _itemCard(CartModel line) {
     final format = NumberFormat('#,##0');
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -221,12 +355,11 @@ class _CheckOutViewState extends State<CheckOutView> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: CachedNetworkImage(
-              imageUrl: product.imageUrl,
+            child: HomeCatalogImage(
+              assetPath: line.mainImage,
               width: 64,
               height: 64,
               fit: BoxFit.cover,
-              errorWidget: (_, __, ___) => const PharmacyPlaceholder(size: 32),
             ),
           ),
           const SizedBox(width: 12),
@@ -235,7 +368,7 @@ class _CheckOutViewState extends State<CheckOutView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product.name(context),
+                  line.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.noto14w400.copyWith(
@@ -278,7 +411,7 @@ class _CheckOutViewState extends State<CheckOutView> {
           Expanded(
             child: TextField(
               controller: promoCodeController,
-              readOnly: promoApplied,
+              readOnly: context.read<CartCubit>().isCouponApplied,
               decoration: InputDecoration(
                 hintText: S.of(context).promoCode,
                 border: InputBorder.none,
@@ -293,36 +426,31 @@ class _CheckOutViewState extends State<CheckOutView> {
             child: ElevatedButton(
               onPressed: () {
                 final code = promoCodeController.text.trim().toUpperCase();
-                if (promoApplied) {
-                  setState(() {
-                    promoApplied = false;
-                    promoCodeController.clear();
-                  });
+                final cartCubit = context.read<CartCubit>();
+                if (cartCubit.isCouponApplied) {
+                  cartCubit.removeCoupon();
+                  promoCodeController.clear();
                   return;
                 }
-                if (code == CheckoutLocalStore.promoCode) {
-                  setState(() => promoApplied = true);
-                  ToastMessage().displayMessageToast(
-                    S.of(context).approved,
-                    AppColors.teal,
-                  );
-                } else {
-                  ToastMessage().displayMessageToast(
-                    S.of(context).promoCodeExpired,
-                    Colors.red,
-                  );
+                if (code.isEmpty) {
+                  return;
                 }
+                cartCubit.applyCoupon(context, code);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor:
-                    promoApplied ? const Color(0xFFEF4444) : AppColors.primaryColor,
+                    context.read<CartCubit>().isCouponApplied
+                        ? const Color(0xFFEF4444)
+                        : AppColors.primaryColor,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: Text(
-                promoApplied ? S.of(context).remove : S.of(context).confirm,
+                context.read<CartCubit>().isCouponApplied
+                    ? S.of(context).remove
+                    : S.of(context).confirm,
                 style: AppTextStyles.noto14w400.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -359,7 +487,8 @@ class _CheckOutViewState extends State<CheckOutView> {
     );
   }
 
-  void _confirm(AddressModel address) {
+  void _confirm(AddressModel? address) {
+    if (context.read<CartCubit>().cart.isEmpty) return;
     if (transferMethod != 'cash' && image == null) {
       ToastMessage().displayMessageToast(
         S.of(context).upload_image_here_please,
@@ -375,37 +504,21 @@ class _CheckOutViewState extends State<CheckOutView> {
       return;
     }
 
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final lines = _lines;
-    final subtotal = lines.fold<double>(0, (sum, line) => sum + line.lineTotal);
-    final delivery = _store.deliveryFeeFor(address);
-    final discount = promoApplied ? subtotal * CheckoutLocalStore.promoPercent : 0.0;
-    final total = subtotal - discount + delivery;
-    final gift = isAr
-        ? 'هدية مع طلبك: فيتامين C'
-        : 'Gift with your order: Vitamin C';
-    OrdersLocalStore.instance.addFromCheckout(
-      items: [
-        for (final line in lines)
-          for (var i = 0; i < line.quantity; i++) line.product,
-      ],
-      address: address,
-      paymentMethod: transferMethod,
-      total: total.toStringAsFixed(0),
-      deliveryFee: delivery.toStringAsFixed(0),
-      gift: gift,
-    );
-    _cart.clear();
-    Navigator.pushNamedAndRemoveUntil(
+    if (address?.id == null) {
+      ToastMessage().displayMessageToast(
+        S.of(context).delivery_address,
+        AppColors.redOpacity,
+      );
+      return;
+    }
+
+    context.read<CartCubit>().confirmOrder(
       context,
-      Routes.checkoutSuccess,
-      (route) => false,
-      arguments: {
-        'points': 80,
-        'gift': Localizations.localeOf(context).languageCode == 'ar'
-            ? 'هدية مع طلبك: فيتامين C'
-            : 'Gift with your order: Vitamin C',
-      },
+      address!.id!,
+      transferMethod,
+      context.read<CartCubit>().coupon?.code ?? '',
+      notesController.text.trim(),
+      image: image,
     );
   }
 }

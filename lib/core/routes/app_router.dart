@@ -18,10 +18,8 @@ import 'package:elkawther/features/health_services/screens/beauty_consultation/b
 import 'package:elkawther/features/health_services/screens/pregnancy/pregnancy_result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/features/categories/cubit/category_products_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
-import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/orders/models/order_details_model.dart';
 import 'package:elkawther/features/addresses/screens/add_new_address_view.dart';
 import 'package:elkawther/features/addresses/screens/addresses_view.dart';
@@ -114,7 +112,7 @@ class RouteGenerator {
       case Routes.search:
         return _material(
           BlocProvider(
-            create: (context) => HomeCubit(const HomeState()),
+            create: (context) => getIt<HomeCubit>(),
             child: const SearchView(),
           ),
           settings,
@@ -132,8 +130,7 @@ class RouteGenerator {
           return _material(
             MultiBlocProvider(
               providers: [
-                BlocProvider(create: (context) => HomeCubit(const HomeState())),
-                BlocProvider(create: (context) => getIt<AuthCubit>()),
+                BlocProvider(create: (context) => getIt<HomeCubit>()),
               ],
               child: ViewMoreProductsView(
                 title: args.title,
@@ -148,10 +145,7 @@ class RouteGenerator {
         {
           final args = settings.arguments as BrandProductsArgs;
           return _material(
-            BlocProvider(
-              create: (context) => getIt<AuthCubit>(),
-              child: BrandProductsView(brandName: args.name, brandId: args.id),
-            ),
+            BrandProductsView(brandName: args.name, brandId: args.id),
             settings,
           );
         }
@@ -160,13 +154,7 @@ class RouteGenerator {
         {
           final args = settings.arguments as HealthIssueProductsArgs;
           return _material(
-            BlocProvider(
-              create: (context) => getIt<AuthCubit>(),
-              child: HealthIssueProductsView(
-                issueId: args.id,
-                issueName: args.name,
-              ),
-            ),
+            HealthIssueProductsView(issueId: args.id, issueName: args.name),
             settings,
           );
         }
@@ -250,10 +238,7 @@ class RouteGenerator {
 
       case Routes.editAddress:
         final args = settings.arguments as AddressModel;
-        return _material(
-          EditAddressView(addNewAddress: args),
-          settings,
-        );
+        return _material(EditAddressView(addNewAddress: args), settings);
 
       case Routes.myOrders:
         final args = settings.arguments as bool? ?? false;
@@ -360,11 +345,6 @@ class RouteGenerator {
                     return getIt<CategoryProductsCubit>();
                   },
                 ),
-                BlocProvider(
-                  create: (context) {
-                    return getIt<AuthCubit>();
-                  },
-                ),
               ],
               child: CategoryProductsView(
                 categoryName: args.name,
@@ -384,7 +364,6 @@ class RouteGenerator {
             MultiBlocProvider(
               providers: [
                 BlocProvider(create: (context) => getIt<OrdersCubit>()),
-                BlocProvider(create: (context) => getIt<AuthCubit>()),
               ],
               child: ProductDetailsView(
                 productId: args['id'],
@@ -420,14 +399,7 @@ class RouteGenerator {
 
       default:
         return _material(
-          MultiBlocProvider(
-            providers: [
-              BlocProvider<AuthCubit>(create: (_) => getIt<AuthCubit>()),
-            ],
-            child: const Scaffold(
-              body: Center(child: Text("No Routes Available")),
-            ),
-          ),
+          const Scaffold(body: Center(child: Text("No Routes Available"))),
           settings,
         );
     }

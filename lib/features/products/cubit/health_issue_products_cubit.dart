@@ -27,7 +27,7 @@ class HealthIssueProductsCubit extends Cubit<HealthIssueProductsState> {
       final model = await _healthIssueProductsService.getHealthIssueProducts(
         issueId,
       );
-      healthIssueProducts = model.data!.products ?? [];
+      healthIssueProducts = model.data?.products ?? model.dataHealth ?? [];
       emit(HealthIssueProductsLoaded(healthIssueProducts: healthIssueProducts));
     } catch (_) {
       if (!context.mounted) return;

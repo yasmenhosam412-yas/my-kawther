@@ -16,7 +16,10 @@ class HomeState extends Equatable {
   const HomeState({
     this.status = HomeStatus.initial,
     this.isLoadingMore = false,
+    this.isLoadingCategoriesMore = false,
+    this.categoriesHasMore = true,
     this.error,
+    this.categoriesError,
     this.banners,
     this.categories,
     this.allCategories,
@@ -42,7 +45,10 @@ class HomeState extends Equatable {
 
   final HomeStatus status;
   final bool isLoadingMore;
+  final bool isLoadingCategoriesMore;
+  final bool categoriesHasMore;
   final Errors? error;
+  final Errors? categoriesError;
 
   final BannersModel? banners;
   final CategoriesModel? categories;
@@ -81,8 +87,12 @@ class HomeState extends Equatable {
   HomeState copyWith({
     HomeStatus? status,
     bool? isLoadingMore,
+    bool? isLoadingCategoriesMore,
+    bool? categoriesHasMore,
     Errors? error,
+    Errors? categoriesError,
     bool clearError = false,
+    bool clearCategoriesError = false,
     BannersModel? banners,
     CategoriesModel? categories,
     CategoriesModel? allCategories,
@@ -109,7 +119,12 @@ class HomeState extends Equatable {
     return HomeState(
       status: status ?? this.status,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      isLoadingCategoriesMore:
+          isLoadingCategoriesMore ?? this.isLoadingCategoriesMore,
+      categoriesHasMore: categoriesHasMore ?? this.categoriesHasMore,
       error: clearError ? null : error ?? this.error,
+      categoriesError:
+          clearCategoriesError ? null : categoriesError ?? this.categoriesError,
       banners: banners ?? this.banners,
       categories: categories ?? this.categories,
       allCategories: allCategories ?? this.allCategories,
@@ -138,7 +153,10 @@ class HomeState extends Equatable {
   List<Object?> get props => [
     status,
     isLoadingMore,
+    isLoadingCategoriesMore,
+    categoriesHasMore,
     error,
+    categoriesError,
     banners,
     categories,
     allCategories,

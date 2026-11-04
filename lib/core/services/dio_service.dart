@@ -50,14 +50,31 @@ class DioService {
             (token != null && token.isNotEmpty) ? 'Bearer $token' : '',
       };
 
+    dio.options.headers.remove('Authorization');
+
     dio.interceptors.add(GetIt.I.get<AuthenticatorInterceptor>());
 
     dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (error, handler) {
+          if (kDebugMode) {
+            debugPrint(
+              'Dio request failed: ${error.requestOptions.method} '
+              '${error.requestOptions.uri} '
+              '(${error.type}): ${error.error ?? error.message}',
+            );
+          }
+          handler.next(error);
+        },
+      ),
+    );
+
+    dio.interceptors.add(
       PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: true,
+        requestHeader: false,
+        requestBody: false,
+        responseBody: false,
+        responseHeader: false,
         error: true,
         compact: true,
         maxWidth: 90,

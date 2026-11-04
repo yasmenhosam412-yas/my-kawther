@@ -7,6 +7,6 @@ class HomeNewArrivalProductsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const HomeProductsRow(products: HomeDemoData.newArrivals);
+    return HomeProductsRow(products: HomeDemoData.newArrivals);
   }
 }

@@ -96,6 +96,7 @@ class CartCubit extends Cubit<CartState> {
 
   List<CartModel> _cart = [];
   Cubon? _coupon;
+  int _cartRequestVersion = 0;
 
   List<CartModel> get cart => _cart;
 
@@ -108,23 +109,36 @@ class CartCubit extends Cubit<CartState> {
 
   bool get isCouponApplied => _coupon != null;
 
+  Cubon? get coupon => _coupon;
+
   final Map<String, bool> _updatingItems = {};
+
+  void clearCart() {
+    _cartRequestVersion++;
+    _cart = [];
+    _coupon = null;
+    emit(CartLoaded(cart: _cart, coupon: _coupon));
+  }
 
   bool isItemUpdating(int productId, String size) {
     return _updatingItems['$productId-$size'] ?? false;
   }
 
   Future<void> loadCart(BuildContext context) async {
+    final requestVersion = ++_cartRequestVersion;
     emit(CartLoading());
     try {
       final cartItems = await _cartServices.getCart();
+      if (requestVersion != _cartRequestVersion) return;
       _cart = cartItems;
       emit(CartLoaded(cart: _cart, coupon: _coupon));
     } on DioError catch (e) {
+      if (requestVersion != _cartRequestVersion) return;
       final error = Errors.fromDioError(e);
       if (!context.mounted) return;
       emit(CartError(error.localizedMessage(context)));
     } catch (e) {
+      if (requestVersion != _cartRequestVersion) return;
       final error = Errors(message: e.toString());
       if (!context.mounted) return;
       emit(CartError(error.localizedMessage(context)));
@@ -138,7 +152,7 @@ class CartCubit extends Cubit<CartState> {
   ) async {
     final result = await _cartServices.addItemToCart(productId, quantity, size);
 
-    return result.fold(
+    final addResult = result.fold<Either<Errors, CartItemData>>(
       (error) {
         emit(CartError(error.message));
         return Left(error);
@@ -173,10 +187,20 @@ class CartCubit extends Cubit<CartState> {
           );
         }
         emit(CartItemAdded(cartItemData: newItem));
-        emit(CartLoaded(cart: List.from(_cart), coupon: _coupon));
         return Right(newItem);
       },
     );
+    if (addResult.isRight()) {
+      try {
+        _cart = await _cartServices.getCart();
+        emit(CartLoaded(cart: List.from(_cart), coupon: _coupon));
+      } on DioException catch (error) {
+        emit(CartError(Errors.fromDioError(error).message));
+      } catch (error) {
+        emit(CartError(error.toString()));
+      }
+    }
+    return addResult;
   }
 
   Future<void> removeItem(

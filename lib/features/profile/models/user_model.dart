@@ -28,19 +28,23 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final verified = json['is_verified'];
+
     return UserModel(
-      id: json['id'],
-      name: json['name'],
-      phone: json['phone'],
-      email: json['email'],
-      password: json['password'],
-      socialId: json['social_id'],
-      socialProvider: json['social_provider'],
-      isVerified: json['is_verified'],
-      otpCode: json['otp_code'],
-      otpExpiresAt: json['otp_expires_at'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
+      id: id is num ? id.toInt() : int.tryParse('$id') ?? 0,
+      name: json['name']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      password: json['password']?.toString(),
+      socialId: json['social_id']?.toString(),
+      socialProvider: json['social_provider']?.toString(),
+      isVerified:
+          verified == true || verified == 1 || verified?.toString() == '1',
+      otpCode: json['otp_code']?.toString(),
+      otpExpiresAt: json['otp_expires_at']?.toString(),
+      createdAt: json['created_at']?.toString() ?? '',
+      updatedAt: json['updated_at']?.toString() ?? '',
     );
   }
 

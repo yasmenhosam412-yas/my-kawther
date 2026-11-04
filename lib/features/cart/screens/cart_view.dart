@@ -1,267 +1,360 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/widgets/pharmacy_placeholder.dart';
-import 'package:elkawther/features/home/data/home_cart_store.dart';
-import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
+import 'package:elkawther/features/cart/models/cart_model.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-class CartView extends StatelessWidget {
+class CartView extends StatefulWidget {
   const CartView({super.key});
+
+  @override
+  State<CartView> createState() => _CartViewState();
+}
+
+class _CartViewState extends State<CartView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<CartCubit>().loadCart(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final store = HomeCartStore.instance;
     final numberFormat = NumberFormat('#,##0');
 
-    return ListenableBuilder(
-      listenable: store,
-      builder: (context, _) {
-        final lines = store.lines;
+    return BlocConsumer<CartCubit, CartState>(
+      listener: (context, state) {
+        final message =
+            state is CartError
+                ? state.message
+                : state is CartLoaded
+                ? state.errorMessage?.localizedMessage(context)
+                : null;
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
+      builder: (context, state) {
+        final cubit = context.read<CartCubit>();
+        final cart = cubit.cart;
+        final isLoading = state is CartLoading;
+        final isEmpty = cart.isEmpty;
+
         return ProfileScaffold(
           title: S.of(context).cart,
-          subtitle: isAr
-              ? 'راجع منتجاتك قبل إتمام الطلب'
-              : 'Review your items before checkout',
-          bottom: lines.isEmpty
-              ? ProfilePrimaryButton(
-                  title: S.of(context).startShopping,
-                  onPressed: () {
-                    if (Navigator.of(context).canPop()) {
-                      Navigator.pop(context);
-                    } else {
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        Routes.home,
-                        (route) => false,
-                      );
-                    }
-                  },
-                )
-              : ProfilePrimaryButton(
-                  title: S.of(context).checkout,
-                  onPressed: () {
-                    Navigator.pushNamed(context, Routes.checkout);
-                  },
-                ),
-          body: lines.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 56,
-                          color: AppColors.grey.withOpacity(0.7),
+          subtitle:
+              isAr
+                  ? 'راجع منتجاتك قبل إتمام الطلب'
+                  : 'Review your items before checkout',
+          bottom: ProfilePrimaryButton(
+            title:
+                isEmpty ? S.of(context).startShopping : S.of(context).checkout,
+            onPressed:
+                isLoading
+                    ? null
+                    : isEmpty
+                    ? _goShopping
+                    : () => Navigator.pushNamed(context, Routes.checkout),
+          ),
+          body: RefreshIndicator(
+            color: AppColors.primaryColor,
+            onRefresh: () => cubit.loadCart(context),
+            child:
+                isLoading && isEmpty
+                    ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(
+                          height: 300,
+                          child: Center(child: CircularProgressIndicator()),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          S.of(context).cartEmpty,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.noto16w400.copyWith(
-                            color: AppColors.darkColor,
-                            fontWeight: FontWeight.w800,
+                      ],
+                    )
+                    : isEmpty
+                    ? _emptyCart(state)
+                    : ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      children: [
+                        for (final item in cart) ...[
+                          _cartItem(context, item, numberFormat),
+                          const SizedBox(height: 12),
+                        ],
+                        ProfileFormCard(
+                          child: Row(
+                            children: [
+                              Text(
+                                S.of(context).total,
+                                style: AppTextStyles.noto16w400.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkColor,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${numberFormat.format(cubit.totalAfterDiscount)} ${S.of(context).currency}',
+                                style: AppTextStyles.noto16w400.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryColor,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          S.of(context).cartEmptySubtitle,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.noto14w400.copyWith(
+                      ],
+                    ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _emptyCart(CartState state) {
+    final error = state is CartError ? state.message : null;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: 360,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    error == null
+                        ? Icons.shopping_bag_outlined
+                        : Icons.cloud_off_outlined,
+                    size: 56,
+                    color: AppColors.grey.withOpacity(0.7),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    error ?? S.of(context).cartEmpty,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.noto16w400.copyWith(
+                      color: AppColors.darkColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (error == null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      S.of(context).cartEmptySubtitle,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: AppColors.grey,
+                      ),
+                    ),
+                  ],
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed:
+                          () => context.read<CartCubit>().loadCart(context),
+                      child: Text(S.of(context).retry),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cartItem(
+    BuildContext context,
+    CartModel item,
+    NumberFormat numberFormat,
+  ) {
+    final cubit = context.read<CartCubit>();
+    final updating = cubit.isItemUpdating(item.productId, item.size);
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap:
+            () => Navigator.pushNamed(
+              context,
+              Routes.productDetails,
+              arguments: {
+                'id': item.productId,
+                'isFav': false,
+                'isView': false,
+              },
+            ),
+        child: Ink(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryColor.withOpacity(0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: ColoredBox(
+                  color: AppColors.light,
+                  child: HomeCatalogImage(
+                    assetPath: item.mainImage,
+                    width: 76,
+                    height: 76,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${numberFormat.format(item.lineTotal)} ${S.of(context).currency}',
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: AppColors.primaryColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _QtyButton(
+                          icon: Icons.remove_rounded,
+                          label: isAr ? 'تقليل الكمية' : 'Decrease quantity',
+                          onTap:
+                              updating || item.quantity <= 1
+                                  ? null
+                                  : () => cubit.updateQuantitySafe(
+                                    context,
+                                    item.productId,
+                                    'decrement',
+                                    item.size,
+                                  ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            '${item.quantity}',
+                            style: AppTextStyles.noto14w400.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.darkColor,
+                            ),
+                          ),
+                        ),
+                        _QtyButton(
+                          icon: Icons.add_rounded,
+                          label: isAr ? 'زيادة الكمية' : 'Increase quantity',
+                          onTap:
+                              updating
+                                  ? null
+                                  : () => cubit.updateQuantitySafe(
+                                    context,
+                                    item.productId,
+                                    'increment',
+                                    item.size,
+                                  ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => cubit.removeItem(context, item.id),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
                             color: AppColors.grey,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                )
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: lines.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final line = lines[index];
-                          final product = line.product;
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () =>
-                                  HomeNavigation.openProduct(context, product),
-                              child: Ink(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primaryColor
-                                          .withOpacity(0.08),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: ColoredBox(
-                                        color: AppColors.light,
-                                        child: CachedNetworkImage(
-                                          imageUrl: product.imageUrl,
-                                          width: 76,
-                                          height: 76,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const PharmacyImageLoading(),
-                                          errorWidget:
-                                              (context, url, error) =>
-                                                  const PharmacyPlaceholder(
-                                            size: 40,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            product.name(context),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppTextStyles.noto14w400
-                                                .copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.darkColor,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            '${numberFormat.format(line.lineTotal)} ${S.of(context).currency}',
-                                            style: AppTextStyles.noto14w400
-                                                .copyWith(
-                                              color: AppColors.primaryColor,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              _QtyButton(
-                                                icon: Icons.remove_rounded,
-                                                onTap: () => store.decrement(
-                                                  product.id,
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                ),
-                                                child: Text(
-                                                  '${line.quantity}',
-                                                  style: AppTextStyles
-                                                      .noto14w400
-                                                      .copyWith(
-                                                    fontWeight: FontWeight.w800,
-                                                    color: AppColors.darkColor,
-                                                  ),
-                                                ),
-                                              ),
-                                              _QtyButton(
-                                                icon: Icons.add_rounded,
-                                                onTap: () => store.increment(
-                                                  product.id,
-                                                ),
-                                              ),
-                                              const Spacer(),
-                                              IconButton(
-                                                onPressed: () =>
-                                                    store.removeAt(index),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .delete_outline_rounded,
-                                                  color: AppColors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: ProfileFormCard(
-                        child: Row(
-                          children: [
-                            Text(
-                              S.of(context).total,
-                              style: AppTextStyles.noto16w400.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.darkColor,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${numberFormat.format(store.total)} ${S.of(context).currency}',
-                              style: AppTextStyles.noto16w400.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primaryColor,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
-        );
-      },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  void _goShopping() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(context, Routes.home, (route) => false);
+    }
   }
 }
 
 class _QtyButton extends StatelessWidget {
-  const _QtyButton({required this.icon, required this.onTap});
+  const _QtyButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
-  final VoidCallback onTap;
+  final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.light,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(icon, size: 18, color: AppColors.primaryColor),
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        label: label,
+        child: Material(
+          color:
+              onTap == null
+                  ? AppColors.light
+                  : AppColors.primaryColor.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(
+                icon,
+                size: 22,
+                color: onTap == null ? AppColors.grey : AppColors.primaryColor,
+              ),
+            ),
+          ),
         ),
       ),
     );

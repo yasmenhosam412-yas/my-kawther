@@ -1,11 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:elkawther/features/auth/cubit/account_delete_cubit.dart';
 import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
 import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
-import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
 import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
 import 'package:elkawther/core/constants/app_constants.dart';
@@ -68,10 +66,8 @@ Future<void> setupServiceLocator() async {
     ..registerLazySingleton(() => CategoryProductsService())
     ..registerLazySingleton(() => MainNotiService());
 
-  getIt.registerFactory(() => AuthCubit());
-
   if (!getIt.isRegistered<HomeCubit>()) {
-    getIt.registerFactory<HomeCubit>(() => HomeCubit(const HomeState()));
+    getIt.registerFactory<HomeCubit>(() => HomeCubit(getIt<HomeService>()));
   }
 
   getIt.registerFactory<FavouriteCubit>(
@@ -102,10 +98,11 @@ Future<void> setupServiceLocator() async {
   getIt.registerFactory<AddressCubit>(
     () => AddressCubit(getIt<ProfileServices>()),
   );
-  getIt.registerFactory<AccountDeleteCubit>(
-    () => AccountDeleteCubit(getIt<AuthService>()),
-  );
   getIt.registerFactory<NotificationCubit>(
     () => NotificationCubit(getIt<MainNotiService>()),
   );
+
+  //--------------------------
+
+  getIt.registerFactory(() => AuthCubit(authService: getIt<AuthService>()));
 }

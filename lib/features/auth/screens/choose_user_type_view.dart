@@ -4,6 +4,9 @@ import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/pharmacy_logo.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../cubit/auth_cubit.dart';
 
 class ChooseUserTypeView extends StatelessWidget {
   const ChooseUserTypeView({super.key});
@@ -97,7 +100,10 @@ class ChooseUserTypeView extends StatelessWidget {
                   title: S.of(context).continueAsVisitor,
                   icon: Icons.storefront_rounded,
                   filled: false,
-                  onTap: () => Navigator.pushNamed(context, Routes.home),
+                  onTap: () {
+                    context.read<AuthCubit>().userVisitor();
+                    Navigator.pushNamed(context, Routes.home);
+                  },
                 ),
               ],
             ),
@@ -137,18 +143,20 @@ class _UserTypeCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: filled
-                ? null
-                : Border.all(color: AppColors.primaryColor, width: 1.4),
-            boxShadow: filled
-                ? [
-                    BoxShadow(
-                      color: AppColors.primaryColor.withOpacity(0.28),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
+            border:
+                filled
+                    ? null
+                    : Border.all(color: AppColors.primaryColor, width: 1.4),
+            boxShadow:
+                filled
+                    ? [
+                      BoxShadow(
+                        color: AppColors.primaryColor.withOpacity(0.28),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                    : null,
           ),
           child: Row(
             children: [
@@ -156,9 +164,8 @@ class _UserTypeCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: filled
-                      ? Colors.white.withOpacity(0.16)
-                      : AppColors.light,
+                  color:
+                      filled ? Colors.white.withOpacity(0.16) : AppColors.light,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: foreground),
@@ -174,10 +181,7 @@ class _UserTypeCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_rounded,
-                color: foreground,
-              ),
+              Icon(Icons.arrow_forward_rounded, color: foreground),
             ],
           ),
         ),
