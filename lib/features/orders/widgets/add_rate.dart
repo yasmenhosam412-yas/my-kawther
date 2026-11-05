@@ -1,10 +1,12 @@
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/features/profile/cubit/reviews_cubit.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
 class AddRateBottomSheet extends StatefulWidget {
@@ -19,6 +21,8 @@ class AddRateBottomSheet extends StatefulWidget {
 class _AddRateBottomSheetState extends State<AddRateBottomSheet> {
   late TextEditingController _commentController;
   final _key = GlobalKey<FormState>();
+  double _rating = 1;
+  bool _sending = false;
 
   @override
   void initState() {
@@ -101,7 +105,7 @@ class _AddRateBottomSheetState extends State<AddRateBottomSheet> {
                     Icons.star_rounded,
                     color: AppColors.primaryColor,
                   ),
-                  onRatingUpdate: (_) {},
+                  onRatingUpdate: (value) => _rating = value,
                 ),
               ),
               const SizedBox(height: 16),
@@ -136,20 +140,33 @@ class _AddRateBottomSheetState extends State<AddRateBottomSheet> {
               const SizedBox(height: 16),
               ProfilePrimaryButton(
                 title: S.of(context).send,
-                onPressed: () {
-                  if (!_key.currentState!.validate()) return;
-                  Navigator.of(context).pop();
-                  ToastMessage().displayMessageToast(
-                    S.of(context).thank_you_for_your_rating,
-                    AppColors.teal,
-                  );
-                  Navigator.pushNamed(context, Routes.thanksRate);
-                },
+                isLoading: _sending,
+                onPressed: _sending ? null : _submit,
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _submit() async {
+    if (!_key.currentState!.validate()) return;
+    setState(() => _sending = true);
+    await context.read<ReviewCubit>().leaveReview(
+      widget.productId.toString(),
+      _rating.round(),
+      _commentController.text.trim(),
+    );
+    if (!mounted) return;
+    final state = context.read<ReviewCubit>().state;
+    setState(() => _sending = false);
+    if (state is ReviewError) {
+      AppSnackBar.error(state.message.localizedMessage(context));
+      return;
+    }
+    Navigator.of(context).pop();
+    AppSnackBar.success(S.of(context).thank_you_for_your_rating);
+    Navigator.pushNamed(context, Routes.thanksRate);
   }
 }

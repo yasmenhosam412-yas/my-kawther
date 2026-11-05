@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/utils/validators.dart';
 import 'package:elkawther/core/widgets/custom_password_form_field.dart';
@@ -45,10 +44,7 @@ class _EditPasswordState extends State<EditPassword> {
         title: S.of(context).confirm,
         onPressed: () {
           if (!_formKey.currentState!.validate()) return;
-          ToastMessage().displayMessageToast(
-            S.of(context).loaded,
-            AppColors.primaryColor,
-          );
+          AppSnackBar.success(S.of(context).loaded);
           Navigator.pop(context);
         },
       ),

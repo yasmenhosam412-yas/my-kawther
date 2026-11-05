@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/features/orders/models/order_details_model.dart';
 import 'package:flutter/material.dart';
@@ -246,10 +246,7 @@ class _ReturnProductState extends State<ReturnProduct> {
                   onPressed: () {
                     if (selectedReson.isEmpty &&
                         _textEditingController.text.isEmpty) {
-                      ToastMessage().displayMessageToast(
-                        S.of(context).please_select_reason,
-                        AppColors.gray,
-                      );
+                      AppSnackBar.warning(S.of(context).please_select_reason);
                       return;
                     }
 

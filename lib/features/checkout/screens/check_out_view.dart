@@ -4,7 +4,7 @@ import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/features/checkout/data/checkout_local_store.dart';
 import 'package:elkawther/features/checkout/widgets/address.dart';
 import 'package:elkawther/features/checkout/widgets/payment_option_zain.dart';
@@ -13,11 +13,14 @@ import 'package:elkawther/features/addresses/widgets/build_address_bottom_sheet.
 import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
 import 'package:elkawther/features/cart/models/cart_model.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
+import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
 import 'package:elkawther/features/profile/models/profile_models.dart';
+import 'package:elkawther/features/profile/services/loyalty_service.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 class CheckOutView extends StatefulWidget {
@@ -28,9 +31,9 @@ class CheckOutView extends StatefulWidget {
 }
 
 class _CheckOutViewState extends State<CheckOutView> {
-  final _store = CheckoutLocalStore.instance;
   final notesController = TextEditingController();
   final promoCodeController = TextEditingController();
+  final pointsController = TextEditingController();
   final numberController = TextEditingController(
     text: CheckoutLocalStore.zainNumber,
   );
@@ -41,6 +44,7 @@ class _CheckOutViewState extends State<CheckOutView> {
   AddressModel? _selectedAddress;
   File? image;
   String transferMethod = 'cash';
+  LoyaltyAccount? _loyalty;
 
   @override
   void initState() {
@@ -52,13 +56,27 @@ class _CheckOutViewState extends State<CheckOutView> {
       if (context.read<AddressCubit>().addresses == null) {
         context.read<AddressCubit>().getAllAddresses(context);
       }
+      final profile = context.read<ProfileCubit>();
+      if (profile.deliveryPrices == null) {
+        profile.getDeliveryPricesAndCities();
+      }
+      _loadLoyalty();
     });
+  }
+
+  Future<void> _loadLoyalty() async {
+    try {
+      final account = await GetIt.I<LoyaltyService>().account();
+      if (!mounted) return;
+      setState(() => _loyalty = account);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     notesController.dispose();
     promoCodeController.dispose();
+    pointsController.dispose();
     numberController.dispose();
     creditController.dispose();
     phoneController.dispose();
@@ -71,6 +89,7 @@ class _CheckOutViewState extends State<CheckOutView> {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final items = cartCubit.cart;
     final addressCubit = context.watch<AddressCubit>();
+    final profileCubit = context.watch<ProfileCubit>();
     final availableAddresses = addressCubit.addresses ?? const <AddressModel>[];
     final address =
         _selectedAddress ??
@@ -78,37 +97,34 @@ class _CheckOutViewState extends State<CheckOutView> {
         (availableAddresses.isNotEmpty ? availableAddresses.first : null);
     final format = NumberFormat('#,##0');
     final subtotal = cartCubit.subtotal;
-    final delivery = address == null ? 0.0 : _store.deliveryFeeFor(address);
+    final delivery = address == null
+        ? 0.0
+        : profileCubit.getDeliveryPriceForAddress(address) ?? 0;
     final discount = cartCubit.discount;
     final total = subtotal - discount + delivery;
 
     return BlocListener<CartCubit, CartState>(
       listener: (context, state) {
         if (state is CartError) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
+          AppSnackBar.error(state.message);
         } else if (state is CartLoaded && state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage!.localizedMessage(context)),
-            ),
-          );
+          AppSnackBar.error(state.errorMessage!.localizedMessage(context));
         } else if (state is CouponApplied) {
-          ToastMessage().displayMessageToast(
-            S.of(context).approved,
-            AppColors.teal,
+          final message = state.coupon?.message;
+          AppSnackBar.success(
+            message == null || message.trim().isEmpty
+                ? S.of(context).approved
+                : message,
           );
           promoCodeController.clear();
+        } else if (state is CouponRejected) {
+          AppSnackBar.warning(state.message);
         } else if (state is OrderConfirmed) {
           Navigator.pushNamedAndRemoveUntil(
             context,
             Routes.checkoutSuccess,
             (route) => false,
-            arguments: {
-              'points': state.data.pointsEarned,
-              'gift': state.data.giftDescription,
-            },
+            arguments: state.data,
           );
         }
       },
@@ -134,7 +150,7 @@ class _CheckOutViewState extends State<CheckOutView> {
                   )
                   : context.read<CartCubit>().state is OrderConfirmLoading
                   ? null
-                  : () => _confirm(address),
+                  : () => _confirm(address, total: total, delivery: delivery),
         ),
         body:
             items.isEmpty
@@ -175,14 +191,15 @@ class _CheckOutViewState extends State<CheckOutView> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          S.of(context).delivery_address,
-                          style: AppTextStyles.noto16w400.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.darkColor,
+                        Expanded(
+                          child: _sectionHeader(
+                            1,
+                            address?.isPickupFromPharmacy == true
+                                ? S.of(context).takeFromPharamcy
+                                : S.of(context).delivery_address,
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         TextButton(
                           onPressed: () {
                             showDisplayAddressesBottomSheet(
@@ -209,10 +226,9 @@ class _CheckOutViewState extends State<CheckOutView> {
                         addressName: address.address ?? '',
                         addressDetails: address.city ?? '',
                         location: address.landmark ?? '',
-                        isPharm: address.isPharmacy ?? false,
+                        isPharm: address.isPickupFromPharmacy,
                         apartment: address.apartment ?? '',
                         type: address.type ?? 'home',
-                        phoneNumber: phoneController.text,
                         phoneController: phoneController,
                       )
                     else
@@ -245,13 +261,7 @@ class _CheckOutViewState extends State<CheckOutView> {
                         ),
                       ),
                     const SizedBox(height: 16),
-                    Text(
-                      S.of(context).paymentTool,
-                      style: AppTextStyles.noto16w400.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.darkColor,
-                      ),
-                    ),
+                    _sectionHeader(2, S.of(context).paymentTool),
                     const SizedBox(height: 10),
                     PaymentMethodWidget(
                       numberController: numberController,
@@ -261,17 +271,31 @@ class _CheckOutViewState extends State<CheckOutView> {
                           (method) => setState(() => transferMethod = method),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      S.of(context).order_list,
-                      style: AppTextStyles.noto16w400.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.darkColor,
-                      ),
-                    ),
+                    _sectionHeader(3, S.of(context).order_list),
                     const SizedBox(height: 10),
                     ...items.map(_itemCard),
                     const SizedBox(height: 8),
                     _promoField(),
+                    if (_loyalty?.redeemEnabled != false) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: pointsController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          hintText: isAr
+                              ? 'نقاط الولاء المستخدمة'
+                              : 'Loyalty points to redeem',
+                          helperText: _pointsHelper(isAr),
+                          helperMaxLines: 3,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     ProfileFormCard(
                       child: Column(
@@ -342,6 +366,40 @@ class _CheckOutViewState extends State<CheckOutView> {
     );
   }
 
+  Widget _sectionHeader(int step, String title) {
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            '$step',
+            style: AppTextStyles.noto14w400.copyWith(
+              color: AppColors.primaryColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTextStyles.noto16w400.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.darkColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _itemCard(CartModel line) {
     final format = NumberFormat('#,##0');
     return Container(
@@ -377,12 +435,37 @@ class _CheckOutViewState extends State<CheckOutView> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${S.of(context).quantity}: ${line.quantity}',
-                  style: AppTextStyles.noto14w400.copyWith(
-                    color: AppColors.grey,
-                    fontSize: 12,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '${S.of(context).quantity}: ${line.quantity}',
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: AppColors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (line.discountPercentage > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.teal.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '-${line.discountPercentage}%',
+                          style: AppTextStyles.noto14w400.copyWith(
+                            color: AppColors.teal,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -487,38 +570,101 @@ class _CheckOutViewState extends State<CheckOutView> {
     );
   }
 
-  void _confirm(AddressModel? address) {
+  void _confirm(
+    AddressModel? address, {
+    required double total,
+    required double delivery,
+  }) {
     if (context.read<CartCubit>().cart.isEmpty) return;
     if (transferMethod != 'cash' && image == null) {
-      ToastMessage().displayMessageToast(
-        S.of(context).upload_image_here_please,
-        AppColors.redOpacity,
-      );
+      AppSnackBar.warning(S.of(context).upload_image_here_please);
       return;
     }
     if (phoneController.text.trim().isEmpty) {
-      ToastMessage().displayMessageToast(
-        S.of(context).pleaseEnterPhoneNumber,
-        AppColors.primaryColor,
-      );
+      AppSnackBar.warning(S.of(context).pleaseEnterPhoneNumber);
       return;
     }
 
-    if (address?.id == null) {
-      ToastMessage().displayMessageToast(
-        S.of(context).delivery_address,
-        AppColors.redOpacity,
-      );
+    final checkoutAddressId = address?.checkoutAddressId;
+    if (checkoutAddressId == null) {
+      AppSnackBar.error(S.of(context).delivery_address);
       return;
     }
 
+    final redeemPoints = _redeemPoints(isArabic: _isArabic);
+    if (redeemPoints == -1) return;
     context.read<CartCubit>().confirmOrder(
       context,
-      address!.id!,
+      checkoutAddressId,
       transferMethod,
       context.read<CartCubit>().coupon?.code ?? '',
       notesController.text.trim(),
       image: image,
+      expectedTotal: delivery == 0 && redeemPoints == null ? total : null,
+      redeemPoints: redeemPoints,
     );
+  }
+
+  bool get _isArabic =>
+      Localizations.localeOf(context).languageCode == 'ar';
+
+  String? _pointsHelper(bool isAr) {
+    final loyalty = _loyalty;
+    if (loyalty == null) return null;
+    final parts = <String>[
+      if (loyalty.balance > 0)
+        isAr
+            ? 'المتاح ${loyalty.balance} نقطة'
+            : '${loyalty.balance} points available',
+      if (loyalty.minRedeemPoints > 0)
+        isAr
+            ? 'الحد الأدنى ${loyalty.minRedeemPoints}'
+            : 'Minimum ${loyalty.minRedeemPoints}',
+      if (loyalty.rules.trim().isNotEmpty) loyalty.rules.trim(),
+    ];
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
+
+  int? _redeemPoints({required bool isArabic}) {
+    final raw = pointsController.text.trim();
+    if (raw.isEmpty || _loyalty?.redeemEnabled == false) return null;
+    final points = int.tryParse(raw);
+    if (points == null || points <= 0) {
+      AppSnackBar.warning(
+        isArabic ? 'أدخل عدد نقاط صحيح' : 'Enter a valid points amount',
+      );
+      return -1;
+    }
+    final loyalty = _loyalty;
+    if (loyalty != null && loyalty.balance > 0 && points > loyalty.balance) {
+      AppSnackBar.error(
+        isArabic
+            ? 'النقاط الصالحة غير كافية: المطلوب $points والمتاح ${loyalty.balance}.'
+            : 'Not enough points: $points required, ${loyalty.balance} available.',
+      );
+      return -1;
+    }
+    if (loyalty != null &&
+        loyalty.minRedeemPoints > 0 &&
+        points < loyalty.minRedeemPoints) {
+      AppSnackBar.error(
+        isArabic
+            ? 'الحد الأدنى لاستبدال النقاط هو ${loyalty.minRedeemPoints}.'
+            : 'The minimum points to redeem is ${loyalty.minRedeemPoints}.',
+      );
+      return -1;
+    }
+    if (loyalty != null &&
+        loyalty.maxRedeemPoints > 0 &&
+        points > loyalty.maxRedeemPoints) {
+      AppSnackBar.error(
+        isArabic
+            ? 'الحد الأقصى لاستبدال النقاط هو ${loyalty.maxRedeemPoints}.'
+            : 'The maximum points to redeem is ${loyalty.maxRedeemPoints}.',
+      );
+      return -1;
+    }
+    return points;
   }
 }

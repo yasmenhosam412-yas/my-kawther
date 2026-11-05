@@ -9,7 +9,7 @@ import 'package:elkawther/features/profile/widgets/radio_button_bottom_sheet.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:elkawther/core/providers/locale_provider.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/assets.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/routes/routes.dart';
@@ -232,11 +232,10 @@ class _ProfileViewState extends State<ProfileView> {
                             onConfirm: () async {
                               await context.read<AuthCubit>().logout();
                               if (!context.mounted) return;
-                              ToastMessage().displayMessageToast(
+                              AppSnackBar.success(
                                 isAr
                                     ? 'تم حذف الحساب محلياً'
                                     : 'Account deleted locally',
-                                AppColors.teal,
                               );
                               Navigator.pushNamedAndRemoveUntil(
                                 context,

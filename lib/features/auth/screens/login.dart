@@ -3,6 +3,7 @@ import 'package:elkawther/core/errors/errors.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/utils/validators.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
 import 'package:elkawther/core/widgets/text_field_with_custom_label.dart';
 import 'package:elkawther/features/auth/widgets/auth_scaffold.dart';
@@ -50,11 +51,7 @@ class _LoginState extends State<Login> {
             (route) => false,
           );
         } else if (state is AuthErrorLogin) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              _buildErrorSnackBar(_loginErrorMessage(state.error, context)),
-            );
+          AppSnackBar.error(_loginErrorMessage(state.error, context));
         }
       },
       builder: (context, state) {
@@ -150,32 +147,6 @@ class _LoginState extends State<Login> {
           ),
         );
       },
-    );
-  }
-
-  SnackBar _buildErrorSnackBar(String message) {
-    return SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: const Color(0xFFB42318),
-      elevation: 8,
-      duration: const Duration(seconds: 5),
-      dismissDirection: DismissDirection.horizontal,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      content: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

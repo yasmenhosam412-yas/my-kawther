@@ -1,19 +1,25 @@
 import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
+import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/home/widgets/empty_products_placeholder.dart';
 import 'package:elkawther/features/home/widgets/home_banner.dart';
+import 'package:elkawther/features/home/widgets/home_error_view.dart';
 import 'package:elkawther/features/home/widgets/home_brands_row.dart';
 import 'package:elkawther/features/home/widgets/home_header.dart';
 import 'package:elkawther/features/home/widgets/home_product_card.dart';
 import 'package:elkawther/features/home/widgets/home_problems_row.dart';
 import 'package:elkawther/features/home/widgets/home_search_row.dart';
+import 'package:elkawther/features/home/widgets/shimmer_box.dart';
 import 'package:elkawther/features/home/widgets/section_header.dart';
 import 'package:elkawther/features/products/models/special_packages_model.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -27,7 +33,12 @@ class _HomeViewState extends State<HomeView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<HomeCubit>().loadHomeData();
+      if (!mounted) return;
+      context.read<HomeCubit>().loadHomeData();
+      final auth = context.read<AuthCubit>().state;
+      if (auth is AuthLoadedLogin || auth is AuthLoadedRegister) {
+        context.read<FavouriteCubit>().fetchFavourites(context);
+      }
     });
   }
 
@@ -37,14 +48,72 @@ class _HomeViewState extends State<HomeView> {
 
     return BlocBuilder<HomeCubit, HomeState>(
       builder: (context, state) {
+        if (state.status == HomeStatus.loading && !state.isHomeReady) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5FAFD),
+            body: SafeArea(
+              child: RefreshIndicator(
+                color: AppColors.primaryColor,
+                onRefresh: () => context.read<HomeCubit>().loadHomeData(),
+                child: const HomeViewShimmer(),
+              ),
+            ),
+          );
+        }
+
+        if (state.status == HomeStatus.failure && state.error != null) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5FAFD),
+            body: SafeArea(
+              child: RefreshIndicator(
+                color: AppColors.primaryColor,
+                onRefresh: () => context.read<HomeCubit>().loadHomeData(),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              AppColors.primaryColor.withOpacity(0.14),
+                              const Color(0xFFF5FAFD),
+                            ],
+                          ),
+                        ),
+                        child: const _RiseIn(child: HomeHeader()),
+                      ),
+                      HomeErrorView(
+                        message: state.error!.localizedMessage(context),
+                        onRetry: () => context.read<HomeCubit>().loadHomeData(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
         final discounts = _discountProducts(
-          state.specialPackages?.topPercentDiscount,
+          context: context,
+          model: state.specialPackages,
+          sections: [state.specialPackages?.topPercentDiscount],
+          discountType: 'percent',
+          sortBySaving: true,
         );
         final specialPackages = _discountProducts(
-          state.specialPackages?.topFixedDiscount,
+          context: context,
+          model: state.specialPackages,
+          sections: [state.specialPackages?.topFixedDiscount],
+          discountType: 'fixed',
         );
-        final bestSelling = _bestSellingProducts(state);
-        final latestProducts = _latestProducts(state);
+        final bestSelling = _bestSellingProducts(state, context);
+        final latestProducts = _latestProducts(state, context);
 
         return Scaffold(
           backgroundColor: const Color(0xFFF5FAFD),
@@ -236,6 +305,7 @@ List<HomeDemoBanner> _banners(HomeState state) =>
             titleAr: banner.title ?? '',
             titleEn: banner.title ?? '',
             imageUrl: banner.imageUrl ?? banner.image ?? '',
+            link: banner.link,
           ),
         )
         .toList() ??
@@ -294,77 +364,192 @@ List<HomeDemoProblem> _healthIssues(HomeState state) =>
         .toList() ??
     const [];
 
-List<HomeDemoProduct> _bestSellingProducts(HomeState state) =>
+List<HomeDemoProduct> _bestSellingProducts(
+  HomeState state,
+  BuildContext context,
+) =>
     state.bestSelling?.data?.where((item) => item.product != null).map((item) {
       final product = item.product!;
+      final size =
+          product.availableSizes?.isNotEmpty == true
+              ? product.availableSizes!.first
+              : null;
+      final currentPrice =
+          size?.priceAfterDiscount ?? size?.price ?? product.finalPrice ?? 0;
+      final originalPrice = size?.originalPrice;
+      final hasSale = originalPrice != null && originalPrice > currentPrice;
+
       return HomeDemoProduct(
         id: product.id ?? 0,
         nameAr: product.name ?? '',
         nameEn: product.name ?? '',
         subtitleAr: product.description ?? '',
         subtitleEn: product.description ?? '',
-        price: product.finalPrice ?? 0,
+        price: currentPrice,
         imageUrl: product.imageUrl ?? product.image ?? '',
         categoryId: product.categoryId ?? 0,
+        originalPrice: hasSale ? originalPrice : null,
+        discountLabel:
+            hasSale
+                ? _latestDiscountLabel(
+                  context,
+                  product.discountType,
+                  originalPrice,
+                  currentPrice,
+                )
+                : null,
         rating: product.averageRating ?? product.rate ?? 0,
         reviews: product.ratingsCount ?? 0,
-        productSizeId:
-            product.availableSizes?.isNotEmpty == true
-                ? product.availableSizes!.first.id
-                : null,
+        productSizeId: size?.id,
       );
     }).toList() ??
     const [];
 
-List<HomeDemoProduct> _latestProducts(HomeState state) =>
-    state.latestProducts?.data
-        ?.map(
-          (product) => HomeDemoProduct(
-            id: product.id ?? 0,
-            nameAr: product.name ?? '',
-            nameEn: product.name ?? '',
-            subtitleAr: product.description ?? '',
-            subtitleEn: product.description ?? '',
-            price: product.finalPrice ?? 0,
-            imageUrl: product.imageUrl ?? product.image ?? '',
-            categoryId: product.category?.id ?? 0,
-            rating: product.averageRating ?? product.rate ?? 0,
-            reviews: product.ratingsCount ?? 0,
-            productSizeId:
-                product.availableSizes?.isNotEmpty == true
-                    ? product.availableSizes!.first.id
-                    : null,
-          ),
-        )
-        .toList() ??
+List<HomeDemoProduct> _latestProducts(HomeState state, BuildContext context) =>
+    state.latestProducts?.data?.map((product) {
+      final size =
+          product.availableSizes?.isNotEmpty == true
+              ? product.availableSizes!.first
+              : null;
+      final currentPrice =
+          size?.priceAfterDiscount ?? size?.price ?? product.finalPrice ?? 0;
+      final originalPrice = size?.originalPrice;
+      final hasSale = originalPrice != null && originalPrice > currentPrice;
+
+      return HomeDemoProduct(
+        id: product.id ?? 0,
+        nameAr: product.name ?? '',
+        nameEn: product.name ?? '',
+        subtitleAr: product.description ?? '',
+        subtitleEn: product.description ?? '',
+        price: currentPrice,
+        imageUrl: product.imageUrl ?? product.image ?? '',
+        categoryId: product.category?.id ?? 0,
+        originalPrice: hasSale ? originalPrice : null,
+        discountLabel:
+            hasSale
+                ? _latestDiscountLabel(
+                  context,
+                  product.discountType,
+                  originalPrice,
+                  currentPrice,
+                )
+                : null,
+        rating: product.averageRating ?? product.rate ?? 0,
+        reviews: product.ratingsCount ?? 0,
+        productSizeId: size?.id,
+      );
+    }).toList() ??
     const [];
 
-List<HomeDemoProduct> _discountProducts(DiscountSection? section) =>
-    section?.products
-        .map(
-          (product) => HomeDemoProduct(
-            id: product.id ?? 0,
-            nameAr: product.name ?? '',
-            nameEn: product.name ?? '',
-            subtitleAr: product.description ?? '',
-            subtitleEn: product.description ?? '',
-            price: product.priceAfterDiscount ?? 0,
-            imageUrl: product.image ?? '',
-            originalPrice: product.priceBeforeDiscountDouble,
-            discountLabel:
-                product.sectionDiscount == null
-                    ? null
-                    : '${product.sectionDiscount!.toStringAsFixed(0)}%',
-            rating: product.averageRating ?? product.rate ?? 0,
-            reviews: product.ratingsCount ?? 0,
-            productSizeId:
-                product.availableSizes?.isNotEmpty == true
-                    ? product.availableSizes!.first.id
-                    : null,
-          ),
-        )
-        .toList() ??
-    const [];
+String _latestDiscountLabel(
+  BuildContext context,
+  String? discountType,
+  double originalPrice,
+  double salePrice,
+) {
+  final numberFormat = NumberFormat('#,##0.##');
+  final discountTypeValue = discountType?.toLowerCase();
+  if (discountTypeValue == 'fixed') {
+    return '${numberFormat.format(originalPrice - salePrice)} ${S.of(context).currency}';
+  }
+
+  final percent = ((originalPrice - salePrice) / originalPrice) * 100;
+  return _percentDiscountLabel(context, numberFormat.format(percent));
+}
+
+List<HomeDemoProduct> _discountProducts({
+  required BuildContext context,
+  required SpecialPackagesModel? model,
+  required List<DiscountSection?> sections,
+  required String discountType,
+  bool sortBySaving = false,
+}) {
+  if (model == null) return const [];
+  final seenIds = <int>{};
+  final products = <HomeDemoProduct>[];
+
+  for (final section in sections) {
+    for (final product in section?.products ?? const <SpecialPackagesData>[]) {
+      if (product.id != null && !seenIds.add(product.id!)) continue;
+      products.add(
+        HomeDemoProduct(
+          id: product.id ?? 0,
+          nameAr: product.name ?? '',
+          nameEn: product.name ?? '',
+          subtitleAr: product.description ?? '',
+          subtitleEn: product.description ?? '',
+          price: product.priceAfterDiscount ?? 0,
+          imageUrl: product.image ?? '',
+          originalPrice: product.priceBeforeDiscountDouble,
+          discountLabel: _discountLabel(context, product, discountType),
+          rating: product.averageRating ?? product.rate ?? 0,
+          reviews: product.ratingsCount ?? 0,
+          productSizeId:
+              product.availableSizes?.isNotEmpty == true
+                  ? product.availableSizes!.first.id
+                  : null,
+        ),
+      );
+    }
+  }
+
+  if (sortBySaving) {
+    products.sort((a, b) {
+      final percentA = _discountPercentOf(a) ?? 0;
+      final percentB = _discountPercentOf(b) ?? 0;
+      return percentB.compareTo(percentA);
+    });
+  }
+  return products;
+}
+
+double? _discountPercentOf(HomeDemoProduct product) {
+  final original = product.originalPrice;
+  if (original == null || original <= 0 || product.price >= original) {
+    return null;
+  }
+  return ((original - product.price) / original) * 100;
+}
+
+String? _discountLabel(
+  BuildContext context,
+  SpecialPackagesData product,
+  String discountType,
+) {
+  final sectionDiscount = product.sectionDiscount;
+  final numberFormat = NumberFormat('#,##0.##');
+
+  if (sectionDiscount != null && discountType == 'percent') {
+    return _percentDiscountLabel(context, numberFormat.format(sectionDiscount));
+  }
+  if (sectionDiscount != null && discountType == 'fixed') {
+    return '${numberFormat.format(sectionDiscount)} ${S.of(context).currency}';
+  }
+
+  final original = product.priceBeforeDiscountDouble;
+  final current = product.priceAfterDiscount;
+  if (original <= 0 || current == null || current >= original) return null;
+  final discount = original - current;
+  if (discountType == 'fixed') {
+    return '${numberFormat.format(discount)} ${S.of(context).currency}';
+  }
+  if (discountType == 'percent') {
+    return _percentDiscountLabel(
+      context,
+      numberFormat.format((discount / original) * 100),
+    );
+  }
+  return null;
+}
+
+String _percentDiscountLabel(BuildContext context, String percentage) {
+  final discount = S.of(context).discount;
+  if (Localizations.localeOf(context).languageCode == 'ar') {
+    return '$discount $percentage٪';
+  }
+  return '$percentage% $discount';
+}
 
 class _ProductBlock extends StatelessWidget {
   const _ProductBlock({
@@ -391,7 +576,10 @@ class _ProductBlock extends StatelessWidget {
           showFire: showFire,
           onPressed: onPressed,
         ),
-        HomeProductsRow(products: products),
+        if (products.isEmpty)
+          const EmptyProductsPlaceholder()
+        else
+          HomeProductsRow(products: products),
       ],
     );
   }

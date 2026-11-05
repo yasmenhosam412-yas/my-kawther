@@ -240,20 +240,20 @@ class ProfileSettingsErrorState extends ProfileCubitState {
 
 extension DeliveryPriceExtension on ProfileCubit {
   double? getDeliveryPriceForAddress(AddressModel? address) {
-    if (address == null || deliveryPrices == null) return null;
+    if (address == null) return null;
+    if (address.isPickupFromPharmacy) return 0;
+    if (deliveryPrices == null) return null;
 
-    final deliveryPrice = deliveryPrices!.firstWhere(
-      (price) =>
-          price.governorate.toLowerCase() == address.city?.toLowerCase() ||
-          price.governorate.toLowerCase() == address.city?.toLowerCase(),
-      orElse:
-          () => DeliveryPrice(
-            governorate: address.governorate ?? "",
-            price: "0",
-            id: 0,
-          ),
-    );
-
-    return double.tryParse(deliveryPrice.price) ?? 0.0;
+    final names = [address.governorate, address.city]
+        .whereType<String>()
+        .map((name) => name.trim().toLowerCase())
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    for (final price in deliveryPrices!) {
+      if (names.contains(price.governorate.trim().toLowerCase())) {
+        return double.tryParse(price.price.replaceAll(',', '')) ?? 0;
+      }
+    }
+    return null;
   }
 }

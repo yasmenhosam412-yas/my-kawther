@@ -13,7 +13,6 @@ class AddressWidget extends StatelessWidget {
   final bool isPharm;
   final String apartment;
   final String type;
-  final String phoneNumber;
   final TextEditingController phoneController;
 
   const AddressWidget({
@@ -24,13 +23,16 @@ class AddressWidget extends StatelessWidget {
     required this.isPharm,
     required this.apartment,
     required this.type,
-    required this.phoneNumber,
     required this.phoneController,
   });
 
   Future<void> _launchMap(String uri) async {
     final parsed = Uri.tryParse(uri);
-    if (parsed == null) return;
+    if (parsed == null ||
+        (parsed.scheme != 'http' && parsed.scheme != 'https') ||
+        parsed.host.isEmpty) {
+      return;
+    }
     await launchUrl(parsed, mode: LaunchMode.externalApplication);
   }
 
@@ -39,27 +41,34 @@ class AddressWidget extends StatelessWidget {
     final kind = type.toLowerCase();
     final isHome = kind == 'home';
     final isWork = kind == 'work';
-    final label = isPharm
-        ? S.of(context).takeFromPharamcy
-        : isHome
+    final label =
+        isPharm
+            ? S.of(context).takeFromPharamcy
+            : isHome
             ? S.of(context).home_address
             : isWork
-                ? S.of(context).work
-                : type;
-    final color = isPharm
-        ? AppColors.teal
-        : isWork
+            ? S.of(context).work
+            : type;
+    final color =
+        isPharm
+            ? AppColors.teal
+            : isWork
             ? const Color(0xFF7C3AED)
             : AppColors.primaryColor;
-    final icon = isPharm
-        ? Icons.local_pharmacy_rounded
-        : isWork
+    final icon =
+        isPharm
+            ? Icons.local_pharmacy_rounded
+            : isWork
             ? Icons.work_outline_rounded
             : Icons.home_rounded;
-    final line = [
-      addressName,
-      if (apartment.isNotEmpty) apartment,
-    ].join(' - ');
+    final line = [addressName, if (apartment.isNotEmpty) apartment].join(' - ');
+
+    final mapUri = Uri.tryParse(location);
+    final canOpenMap =
+        isPharm &&
+        mapUri != null &&
+        (mapUri.scheme == 'http' || mapUri.scheme == 'https') &&
+        mapUri.host.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -67,11 +76,12 @@ class AddressWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.10),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: color.withOpacity(0.07),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -115,22 +125,45 @@ class AddressWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          GestureDetector(
-            onTap: isPharm && location.startsWith('http')
-                ? () => _launchMap(location)
-                : null,
-            child: Text(
-              line,
-              style: AppTextStyles.noto14w400.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkColor,
-                decoration: isPharm ? TextDecoration.underline : null,
-                decorationColor: color,
+          Material(
+            color: color.withOpacity(0.045),
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: canOpenMap ? () => _launchMap(location) : null,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      canOpenMap
+                          ? Icons.location_on_rounded
+                          : Icons.place_outlined,
+                      size: 19,
+                      color: color,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: AppTextStyles.noto14w400.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.darkColor,
+                        ),
+                      ),
+                    ),
+                    if (canOpenMap)
+                      Icon(Icons.open_in_new_rounded, size: 17, color: color),
+                  ],
+                ),
               ),
             ),
           ),
-          if (location.isNotEmpty && !location.startsWith('http')) ...[
+          if (location.isNotEmpty && !canOpenMap) ...[
             const SizedBox(height: 4),
             Text(
               location,
@@ -141,13 +174,19 @@ class AddressWidget extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          Text(
-            S.of(context).contantInfo,
-            style: AppTextStyles.noto14w400.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.darkColor,
-              fontSize: 13,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.phone_rounded, size: 17, color: AppColors.grey),
+              const SizedBox(width: 7),
+              Text(
+                S.of(context).contantInfo,
+                style: AppTextStyles.noto14w400.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkColor,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
@@ -155,6 +194,10 @@ class AddressWidget extends StatelessWidget {
             controller: phoneController,
             maxLines: 1,
             keyboardType: TextInputType.phone,
+            suffixIcon: const Icon(
+              Icons.phone_android_rounded,
+              color: AppColors.grey,
+            ),
           ),
         ],
       ),

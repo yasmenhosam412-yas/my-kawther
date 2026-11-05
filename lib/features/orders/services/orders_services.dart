@@ -30,7 +30,7 @@ class OrdersServices {
   Future<OrderDetailsModel> getOrderDetails(int id) async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.get(
-      "/api/v1/user/order-details/$id",
+      "/api/user/order-details/$id",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -39,7 +39,7 @@ class OrdersServices {
       ),
     );
 
-    return OrderDetailsModel.fromJson(response.data);
+    return OrderDetailsModel.fromJson(_resource(response.data));
   }
 
   Future<RefundedItem> getOrderDetailsRefunded(int id) async {
@@ -60,7 +60,7 @@ class OrdersServices {
   Future<TrackOrder> getOrderTracking(int id) async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.get(
-      "/api/v1/user/track-order/$id",
+      "/api/user/track-order/$id",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -69,7 +69,7 @@ class OrdersServices {
       ),
     );
 
-    return TrackOrder.fromJson(response.data);
+    return TrackOrder.fromJson(_resource(response.data));
   }
 
   Future<Map<String, dynamic>> refundRequest(
@@ -89,9 +89,12 @@ class OrdersServices {
       'refund_amount': refundAmount,
       'refund_method': refundMethod,
       'address': address,
-      for (int i = 0; i < images.length; i++)
-        'images[$i]': await MultipartFile.fromFile(images[i].path),
     });
+    for (final image in images.take(10)) {
+      formData.files.add(
+        MapEntry('images[]', await MultipartFile.fromFile(image.path)),
+      );
+    }
 
     final response = await _dio.post(
       "/api/user/returns",
@@ -120,14 +123,97 @@ class OrdersServices {
       ),
     );
 
-    final List<dynamic> rawData = response.data;
-    return rawData.map((json) => AllReturns.fromJson(json)).toList();
+    final rawData = _asList(response.data);
+    return rawData
+        .whereType<Map>()
+        .map((json) => AllReturns.fromJson(Map<String, dynamic>.from(json)))
+        .toList();
+  }
+
+  Future<String> cancelOrder(int id) async {
+    final token = await storageHelper.safeRead('token');
+    final response = await _dio.post(
+      '/api/user/orders/$id/cancel',
+      options: _authOptions(token),
+    );
+    return _message(response.data);
+  }
+
+  Future<Map<String, dynamic>> payOrder(int id) async {
+    final token = await storageHelper.safeRead('token');
+    final response = await _dio.post(
+      '/api/user/orders/$id/pay',
+      options: _authOptions(token),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return {'message': data?.toString() ?? ''};
+  }
+
+  Future<Map<String, dynamic>> orderPaymentStatus(int id) async {
+    final token = await storageHelper.safeRead('token');
+    final response = await _dio.get(
+      '/api/user/orders/$id/payment',
+      options: _authOptions(token),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return {'message': data?.toString() ?? ''};
+  }
+
+  Future<String> cancelReturn(int id) async {
+    final token = await storageHelper.safeRead('token');
+    final response = await _dio.post(
+      '/api/user/returns/$id/cancel',
+      options: _authOptions(token),
+    );
+    return _message(response.data);
+  }
+
+  String paymentReceiptPath(int orderId) =>
+      '/api/user/files/payment-receipt/$orderId';
+
+  String returnImagePath(int imageId) =>
+      '/api/user/files/return-image/$imageId';
+
+  Options _authOptions(String? token) {
+    return Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+  }
+
+  Map<String, dynamic> _resource(dynamic data) {
+    if (data is! Map) return {};
+    final map = Map<String, dynamic>.from(data);
+    final nested = map['data'];
+    if (nested is Map &&
+        map['order_id'] == null &&
+        (nested['order_id'] != null || nested['status'] != null)) {
+      return Map<String, dynamic>.from(nested);
+    }
+    return map;
+  }
+
+  String _message(dynamic data) {
+    if (data is Map && data['message'] != null) return data['message'].toString();
+    return data?.toString() ?? '';
+  }
+
+  List<dynamic> _asList(dynamic data) {
+    if (data is List) return data;
+    if (data is Map && data['data'] is List) return data['data'] as List;
+    return const [];
   }
 
   Future<Review> addReviewRate(String id, int rate, String review) async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.post(
-      "/api/v1/user/products/$id/rate",
+      "/api/user/products/$id/rate",
       data: {"rate": rate, "review": review},
       options: Options(
         headers: {
@@ -137,7 +223,22 @@ class OrdersServices {
       ),
     );
 
-    return Review.fromJson(response.data['data']);
+    final body = response.data;
+    final payload = body is Map
+        ? (body['data'] is Map ? body['data'] : body)
+        : null;
+    if (payload is! Map) {
+      return Review(
+        id: 0,
+        productId: int.tryParse(id) ?? 0,
+        userId: 0,
+        rate: rate,
+        review: review,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+    return Review.fromJson(Map<String, dynamic>.from(payload));
   }
 
   Future<List<ReviewData>> getProductReview(int id) async {
@@ -177,14 +278,23 @@ class Review {
   });
 
   factory Review.fromJson(Map<String, dynamic> json) {
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    DateTime asDate(dynamic value) =>
+        DateTime.tryParse(value?.toString() ?? '') ?? DateTime.now();
+
     return Review(
-      id: json['id'],
-      productId: json['product_id'],
-      userId: json['user_id'],
-      rate: json['rate'],
+      id: asInt(json['id']),
+      productId: asInt(json['product_id']),
+      userId: asInt(json['user_id']),
+      rate: asInt(json['rate']),
       review: json['review']?.toString() ?? '',
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: asDate(json['created_at']),
+      updatedAt: asDate(json['updated_at']),
     );
   }
 

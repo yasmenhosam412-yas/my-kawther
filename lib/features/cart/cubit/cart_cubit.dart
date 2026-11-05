@@ -37,8 +37,14 @@ class CartLoaded extends CartState {
   final double discount;
   final double total;
 
+  /// Unique per emission. Without it, two consecutive loads with identical
+  /// contents compare as equal (Equatable) and bloc swallows the second one,
+  /// so the UI never rebuilds and per-item loading spinners stay stuck.
+  final DateTime updatedAt;
+
   CartLoaded({required this.cart, this.coupon, this.errorMessage})
-    : subtotal = cart.fold(
+    : updatedAt = DateTime.now(),
+      subtotal = cart.fold(
         0.0,
         (sum, item) => sum + item.discountedPrice * item.quantity,
       ),
@@ -58,6 +64,7 @@ class CartLoaded extends CartState {
     subtotal,
     discount,
     total,
+    updatedAt,
   ];
 }
 
@@ -78,6 +85,16 @@ class CouponApplied extends CartState {
 
   @override
   List<Object?> get props => [cart, coupon ?? ''];
+}
+
+class CouponRejected extends CartState {
+  final List<CartModel> cart;
+  final String message;
+
+  const CouponRejected({required this.cart, required this.message});
+
+  @override
+  List<Object?> get props => [cart, message];
 }
 
 class OrderConfirmed extends CartState {
@@ -313,10 +330,9 @@ class CartCubit extends Cubit<CartState> {
       if (!cubon.success) {
         _coupon = null;
         emit(
-          CartLoaded(
+          CouponRejected(
             cart: List.from(_cart),
-            coupon: null,
-            errorMessage: Errors(message: cubon.message),
+            message: cubon.fullMessage,
           ),
         );
         return;
@@ -352,6 +368,8 @@ class CartCubit extends Cubit<CartState> {
     String coupon,
     String notes, {
     File? image,
+    num? expectedTotal,
+    int? redeemPoints,
   }) async {
     emit(OrderConfirmLoading());
 
@@ -361,6 +379,8 @@ class CartCubit extends Cubit<CartState> {
       coupon,
       notes,
       image: method != "cash" ? image : null,
+      expectedTotal: expectedTotal,
+      redeemPoints: redeemPoints,
     );
 
     result.fold(

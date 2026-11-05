@@ -95,19 +95,44 @@ class Cubon {
   final double totalAfterDiscount;
   final double originalTotal;
 
-  Cubon({
+  /// Localized messages of promotions that were rejected for this cart
+  /// (e.g. "spend 1,080 more to unlock free delivery"), shown as hints
+  /// under the main coupon message. Empty when the coupon was applied.
+  final List<String> hints;
+
+  /// Complete user-facing message: the coupon rejection/error message
+  /// plus any promotion hints on new lines.
+  String get fullMessage =>
+      hints.isEmpty ? message : '$message\n${hints.join('\n')}';
+
+  const Cubon({
     required this.success,
     required this.message,
     required this.code,
     required this.discount,
     required this.totalAfterDiscount,
     required this.originalTotal,
+    this.hints = const [],
   });
 
   factory Cubon.fromJson(Map<String, dynamic> json) {
     double asDouble(dynamic value) {
       if (value is num) return value.toDouble();
       return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    final hints = <String>[];
+    final pricing = json['pricing'];
+    if (pricing is Map<String, dynamic>) {
+      final rejected = pricing['rejected_promotions'];
+      if (rejected is List) {
+        for (final promotion in rejected) {
+          if (promotion is Map<String, dynamic>) {
+            final text = '${promotion['message'] ?? ''}'.trim();
+            if (text.isNotEmpty) hints.add(text);
+          }
+        }
+      }
     }
 
     return Cubon(
@@ -117,6 +142,7 @@ class Cubon {
       discount: asDouble(json['discount']),
       totalAfterDiscount: asDouble(json['total_after_discount']),
       originalTotal: asDouble(json['original_total']),
+      hints: hints,
     );
   }
 }

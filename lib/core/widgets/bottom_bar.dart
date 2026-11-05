@@ -9,6 +9,7 @@ import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/guest_user_dialog.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 
 class BottomBar extends StatefulWidget {
   const BottomBar({
@@ -137,14 +138,7 @@ class _BottomBarState extends State<BottomBar> {
                         quantity,
                         widget.sizeId,
                       );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(S.of(context).addedToCart),
-                          backgroundColor: AppColors.primaryColor,
-                          behavior: SnackBarBehavior.floating,
-                          margin: const EdgeInsets.all(16),
-                        ),
-                      );
+                      AppSnackBar.success(S.of(context).addedToCart);
                     },
                     icon: SvgPicture.asset(
                       Assets.iconsBag,

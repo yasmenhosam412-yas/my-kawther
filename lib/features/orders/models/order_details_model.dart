@@ -30,26 +30,30 @@ class OrderDetailsModel {
   });
 
   factory OrderDetailsModel.fromJson(Map<String, dynamic> json) {
+    final address = json['address'];
     return OrderDetailsModel(
-      success: json['success'] ?? false,
-      orderId: json['order_id'] ?? 0,
-      status: json['status'] ?? "",
-      statusMeaning: json['status_meaning'] ?? "",
-      paymentMethod: json['payment_method'] ?? "",
-      deliveryFee: json['delivery_fee'] ?? "0.00",
-      totalPrice: json['total_price'] ?? "0.00",
-      pointsEarned:
-          json['points_earned'] is int
-              ? json['points_earned']
-              : int.tryParse(json['points_earned'].toString()) ?? 0,
-      giftDescription: json['gift_description'],
-      address: Address.fromJson(json['address'] ?? {}),
+      success: json['success'] == true || json['success'] == 1,
+      orderId: _asInt(json['order_id'] ?? json['id']),
+      status: _asText(json['status']),
+      statusMeaning: _asText(json['status_meaning']),
+      paymentMethod: _asText(json['payment_method']),
+      deliveryFee: _asText(json['delivery_fee'], '0.00'),
+      totalPrice: _asText(json['total_price'] ?? json['total'], '0.00'),
+      pointsEarned: _asInt(json['points_earned']),
+      giftDescription: json['gift_description']?.toString(),
+      address: Address.fromJson(
+        address is Map ? Map<String, dynamic>.from(address) : <String, dynamic>{},
+      ),
       products:
           (json['products'] as List? ?? [])
-              .map((e) => OrderProduct.fromJson(e))
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    OrderProduct.fromJson(Map<String, dynamic>.from(item)),
+              )
               .toList(),
-      createdAt: json['created_at'] ?? "",
-      lastUpdate: json['last_update'] ?? "",
+      createdAt: _asText(json['created_at']),
+      lastUpdate: _asText(json['last_update'] ?? json['updated_at']),
     );
   }
 }
@@ -71,11 +75,11 @@ class Address {
 
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
-      city: json['city'] ?? "-",
-      street: json['street'] ?? "-",
-      building: json['building'] ?? "-",
-      apartment: json['apartment'] ?? "-",
-      landmark: json['landmark'] ?? "-",
+      city: _asText(json['city'], '-'),
+      street: _asText(json['street'], '-'),
+      building: _asText(json['building'], '-'),
+      apartment: _asText(json['apartment'], '-'),
+      landmark: _asText(json['landmark'], '-'),
     );
   }
 }
@@ -102,16 +106,31 @@ class OrderProduct {
   });
 
   factory OrderProduct.fromJson(Map<String, dynamic> json) {
-    final product = json['product'] ?? {};
+    final nested = json['product'];
+    final product =
+        nested is Map ? Map<String, dynamic>.from(nested) : <String, dynamic>{};
+    final image = product['image_url'] ?? product['image'] ?? json['image'];
     return OrderProduct(
-      productId: product['id'] ?? 0,
-      name: product['name'] ?? "",
-      image: product['image_url'],
-      quantity: json['quantity'] ?? 0,
-      originalPrice: json['original_price'] ?? "0.00",
-      priceAtTime: json['price_at_time'] ?? "0.00",
-      totalPrice: json['total_price'] ?? "0.00",
-      size: json['size'] ?? "",
+      productId: _asInt(product['id'] ?? json['product_id'] ?? json['id']),
+      name: _asText(product['name'] ?? json['name']),
+      image: image?.toString(),
+      quantity: _asInt(json['quantity']),
+      originalPrice: _asText(json['original_price'], '0.00'),
+      priceAtTime: _asText(json['price_at_time'] ?? json['price'], '0.00'),
+      totalPrice: _asText(json['total_price'] ?? json['total'], '0.00'),
+      size: _asText(json['size']),
     );
   }
+}
+
+String _asText(dynamic value, [String fallback = '']) {
+  if (value == null) return fallback;
+  final text = value.toString();
+  return text.isEmpty ? fallback : text;
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }

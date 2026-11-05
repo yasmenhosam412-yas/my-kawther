@@ -1,8 +1,10 @@
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
 import 'package:elkawther/features/orders/models/all_returns.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
@@ -162,6 +164,23 @@ class ReturnCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  if (status == ReturnStatus.pending)
+                    TextButton(
+                      onPressed: () async {
+                        try {
+                          final message = await context
+                              .read<OrdersCubit>()
+                              .cancelReturn(returnItem.id);
+                          if (!context.mounted || message.isEmpty) return;
+                          AppSnackBar.success(message);
+                        } catch (error) {
+                          if (context.mounted) {
+                            AppSnackBar.error(error.toString());
+                          }
+                        }
+                      },
+                      child: Text(S.of(context).cancel),
+                    ),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       elevation: 0,

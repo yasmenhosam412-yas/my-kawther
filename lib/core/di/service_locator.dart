@@ -14,12 +14,14 @@ import 'package:elkawther/features/auth/services/auth_service.dart';
 import 'package:elkawther/features/products/services/brand_products_service.dart';
 import 'package:elkawther/features/categories/services/category_products_service.dart';
 import 'package:elkawther/features/favorites/services/favourite_service.dart';
+import 'package:elkawther/features/ads/services/open_ads_service.dart';
 import 'package:elkawther/features/products/services/health_issue_products_service.dart';
 import 'package:elkawther/features/health_services/services/health_services.dart';
 import 'package:elkawther/features/home/services/home_service.dart';
 import 'package:elkawther/features/my_dose/services/my_dose_service.dart';
 import 'package:elkawther/features/orders/services/orders_services.dart';
 import 'package:elkawther/features/products/services/product_details_service.dart';
+import 'package:elkawther/features/profile/services/loyalty_service.dart';
 import 'package:elkawther/features/profile/services/profile_services.dart';
 import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
 import 'package:elkawther/features/cart/services/cart_services.dart';
@@ -53,6 +55,7 @@ Future<void> setupServiceLocator() async {
 
   getIt
     ..registerLazySingleton(() => AuthService())
+    ..registerLazySingleton(() => OpenAdsService())
     ..registerLazySingleton(() => HomeService())
     ..registerLazySingleton(() => CartServices())
     ..registerLazySingleton(() => FavouriteService())
@@ -63,6 +66,7 @@ Future<void> setupServiceLocator() async {
     ..registerLazySingleton(() => HealthService())
     ..registerLazySingleton(() => OrdersServices())
     ..registerLazySingleton(() => ProfileServices())
+    ..registerLazySingleton(() => LoyaltyService())
     ..registerLazySingleton(() => CategoryProductsService())
     ..registerLazySingleton(() => MainNotiService());
 

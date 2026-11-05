@@ -40,20 +40,26 @@ class CheckoutLocalStore extends ChangeNotifier {
     ),
   ];
 
-  static const cities = ['القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة', 'أسيوط'];
+  static const cities = [
+    'القاهرة',
+    'الجيزة',
+    'الإسكندرية',
+    'المنصورة',
+    'أسيوط',
+  ];
 
   AddressModel get current =>
       selected ??
       addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first);
 
   double deliveryFeeFor(AddressModel address) {
-    if (address.isPharmacy == true) return 0;
+    if (address.isPickupFromPharmacy) return 0;
     if ((address.type ?? '').toLowerCase() == 'work') return 5;
     return 3;
   }
 
   double deliveryFeeForType(String type, {bool isPharmacy = false}) {
-    if (isPharmacy) return 0;
+    if (isPharmacy || type.trim().toLowerCase() == 'pharmacy') return 0;
     if (type.toLowerCase() == 'work') return 5;
     return 3;
   }

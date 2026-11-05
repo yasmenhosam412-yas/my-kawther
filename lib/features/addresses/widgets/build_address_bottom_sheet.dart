@@ -109,9 +109,7 @@ class _AddressPicker extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final address = addresses[index];
                     final selected = address.id == selectedId;
-                    final isPharmacy =
-                        address.isPharmacy == true ||
-                        (address.type ?? '').toLowerCase() == 'pharmacy';
+                    final isPharmacy = address.isPickupFromPharmacy;
                     final color =
                         isPharmacy ? AppColors.teal : AppColors.primaryColor;
                     return Material(

@@ -1,11 +1,11 @@
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
-import 'package:elkawther/features/profile/data/profile_local_store.dart';
 import 'package:elkawther/features/profile/models/user_model.dart';
 import 'package:elkawther/generated/assets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
@@ -19,100 +19,103 @@ class ProfileHeaderSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ProfileCubit, ProfileCubitState>(
       builder: (context, state) {
-        final store = ProfileLocalStore.instance;
         final UserModel? user = state is ProfileUserLoadedState
             ? state.user
             : context.read<ProfileCubit>().userData;
-        final name = user?.name ?? store.name;
-        final email = user?.email ?? store.email;
-        final phone = user?.phone ?? store.phone;
+        final isLoading =
+            state is ProfileUserLoadingState ||
+            state is ProfileCubitInitialState;
         final isAr = Localizations.localeOf(context).languageCode == 'ar';
+        final name = isLoading ? 'Account name' : (user?.name ?? '');
+        final email = isLoading ? 'name@email.com' : (user?.email ?? '');
+        final phone = isLoading ? '01000000000' : (user?.phone ?? '');
 
         return Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryColor.withOpacity(0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.primaryColor.withOpacity(0.12),
-                    child: Text(
-                      getInitial(name),
-                      style: AppTextStyles.noto16w400.copyWith(
-                        color: AppColors.primaryColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
+            Skeletonizer(
+              enabled: isLoading,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryColor.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.primaryColor.withOpacity(
+                        0.12,
+                      ),
+                      child: Text(
+                        getInitial(name),
+                        style: AppTextStyles.noto16w400.copyWith(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${S.of(context).hello}! $name',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.noto16w400.copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.darkColor,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isLoading
+                                ? name
+                                : '${S.of(context).hello}! $name',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.noto16w400.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.darkColor,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          email,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.noto14w400.copyWith(
-                            color: AppColors.grey,
-                            fontSize: 12,
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.noto14w400.copyWith(
+                              color: AppColors.grey,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          phone,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.noto14w400.copyWith(
-                            color: AppColors.grey,
-                            fontSize: 12,
+                          const SizedBox(height: 2),
+                          Text(
+                            phone,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.noto14w400.copyWith(
+                              color: AppColors.grey,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isAr
-                              ? 'راجع بيانات حسابك'
-                              : 'Review your account details',
-                          style: AppTextStyles.noto14w400.copyWith(
-                            color: AppColors.grey,
-                            fontSize: 12,
+                          const SizedBox(height: 2),
+                          Text(
+                            isAr
+                                ? 'راجع بيانات حسابك'
+                                : 'Review your account details',
+                            style: AppTextStyles.noto14w400.copyWith(
+                              color: AppColors.grey,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (state is ProfileUserLoadingState)
-                    const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (state is ProfileUserErrorState) ...[

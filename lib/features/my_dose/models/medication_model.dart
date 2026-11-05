@@ -39,22 +39,29 @@ class MedicationModel {
   });
 
   factory MedicationModel.fromJson(Map<String, dynamic> json) {
+    final times = json['times'] as List? ?? const [];
+    final days = json['days'] as List? ?? const [];
     return MedicationModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      notes: json['notes'],
-      imagePath: json['image_url'] ?? "",
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      name: json['name']?.toString() ?? '',
+      notes: json['notes']?.toString(),
+      imagePath: json['image_url']?.toString(),
       quantityPerTime:
           (json['quantity_per_time'] == null)
               ? 0
               : (json['quantity_per_time'] is int
                   ? json['quantity_per_time']
                   : int.tryParse(json['quantity_per_time'].toString()) ?? 0),
-      repeatType: json['repeat_type'] ?? '',
-      days: (json['days'] as List? ?? []).map((e) => e.toString()).toList(),
+      repeatType: json['repeat_type']?.toString() ?? '',
+      days:
+          days
+              .map((day) => day is Map ? day['day'].toString() : day.toString())
+              .toList(),
       times:
-          (json['times'] as List? ?? [])
-              .map((e) => TimeModel.fromJson(e))
+          times
+              .map(
+                (time) => TimeModel.fromJson(Map<String, dynamic>.from(time)),
+              )
               .toList(),
     );
   }

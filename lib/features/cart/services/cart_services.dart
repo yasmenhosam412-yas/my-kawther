@@ -108,6 +108,7 @@ class CartServices {
       throw Exception("User not authenticated");
     }
 
+    Map<String, dynamic>? body;
     try {
       final response = await _dio.post(
         "/api/user/cart/apply-coupon",
@@ -119,23 +120,24 @@ class CartServices {
           },
         ),
       );
-
-      final responseData = response.data;
-      final data =
-          responseData is Map<String, dynamic> &&
-                  responseData['data'] is Map<String, dynamic>
-              ? responseData['data'] as Map<String, dynamic>
-              : responseData as Map<String, dynamic>;
-
-      if (data["success"] == true) {
-        return Cubon.fromJson(data);
-      } else {
-        final message = data["message"] ?? "Unknown error";
-        throw Exception(message);
+      if (response.data is Map<String, dynamic>) {
+        body = response.data as Map<String, dynamic>;
       }
-    } catch (e) {
-      rethrow;
+    } on DioException catch (e) {
+      // Rejections arrive as HTTP 400 but carry a rich body:
+      // { success:false, message, code, pricing:{ rejected_promotions, ... } }
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        body = data;
+      } else {
+        rethrow;
+      }
     }
+
+    if (body == null) {
+      throw const FormatException('Coupon response format is unexpected');
+    }
+    return Cubon.fromJson(body);
   }
 
   Future<Either<Errors, ProductData>> updateQuantity(
@@ -184,6 +186,8 @@ class CartServices {
     String coupon,
     String notes, {
     File? image,
+    num? expectedTotal,
+    int? redeemPoints,
   }) async {
     try {
       final token = await storageHelper.safeRead('token');
@@ -196,11 +200,14 @@ class CartServices {
         "address_id": id,
         "payment_method": method,
         "coupon_code": coupon,
-        "notes": notes,
+        "notes": notes.length > 225 ? notes.substring(0, 225) : notes,
+        if (expectedTotal != null) "expected_total": expectedTotal,
+        if (redeemPoints != null && redeemPoints > 0)
+          "redeem_points": redeemPoints,
         if (image != null)
           "payment_image": await MultipartFile.fromFile(
             image.path,
-            filename: image.path.split("/").last,
+            filename: image.path.split(Platform.pathSeparator).last,
           ),
       });
 
@@ -219,18 +226,24 @@ class CartServices {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = response.data;
-        final orderData =
-            responseData is Map<String, dynamic> &&
-                    responseData['data'] is Map<String, dynamic>
-                ? responseData['data'] as Map<String, dynamic>
-                : responseData as Map<String, dynamic>;
+        final root = responseData is Map
+            ? Map<String, dynamic>.from(responseData)
+            : <String, dynamic>{};
+        final nested = root['data'];
+        final orderData = root['order_id'] != null
+            ? root
+            : nested is Map
+            ? Map<String, dynamic>.from(nested)
+            : root;
         return Right(OrderModel.fromJson(orderData));
       } else {
-        final message =
-            response.data is Map
-                ? (response.data['message']?.toString() ??
-                    'Could not place the order')
-                : 'Could not place the order';
+        final data = response.data;
+        final code = data is Map ? data['code']?.toString() : null;
+        final message = data is Map && data['message'] != null
+            ? data['message'].toString()
+            : code == 'points_rejected'
+            ? 'Points were rejected'
+            : 'Could not place the order';
         return Left(Errors(message: message, statusCode: response.statusCode));
       }
     } on DioException catch (e) {

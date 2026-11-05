@@ -1,4 +1,5 @@
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
@@ -59,9 +60,7 @@ class _VaccineSceduleState extends State<VaccineScedule> {
         onPressed: () async {
           if (babyNameController.text.trim().isEmpty ||
               selectedGender == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(S.of(context).requiredFeilds)),
-            );
+            AppSnackBar.warning(S.of(context).requiredFeilds);
             return;
           }
 
@@ -69,9 +68,7 @@ class _VaccineSceduleState extends State<VaccineScedule> {
           Navigator.pushNamed(context, Routes.home);
 
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(S.of(context).notificationsScheduled)),
-          );
+          AppSnackBar.success(S.of(context).notificationsScheduled);
         },
       ),
       body: ListView(

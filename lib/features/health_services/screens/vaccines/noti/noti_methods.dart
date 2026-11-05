@@ -3,9 +3,6 @@ import 'package:elkawther/core/services/secure_storage_helper.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -34,28 +31,23 @@ Future<void> requestNotificationPermission() async {
 }
 
 Future<bool> isExactAlarmAllowed() async {
-  const platform = MethodChannel('com.elkawther/alarm_permission');
-  try {
-    final bool isAllowed =
-        await platform.invokeMethod<bool>('isExactAlarmAllowed') ?? false;
-    return isAllowed;
-  } on PlatformException catch (_) {
-    return false;
-  }
+  if (!Platform.isAndroid) return false;
+  final androidPlugin =
+      flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+  return await androidPlugin?.canScheduleExactNotifications() ?? false;
 }
 
 Future<void> requestExactAlarmPermissionIfNeeded() async {
   if (Platform.isAndroid) {
-    final deviceInfo = DeviceInfoPlugin();
-    final androidInfo = await deviceInfo.androidInfo;
-
-    if (androidInfo.version.sdkInt >= 31) {
-      const intent = AndroidIntent(
-        action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
-        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-      );
-      await intent.launch();
-    }
+    final androidPlugin =
+        flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+    await androidPlugin?.requestExactAlarmsPermission();
   }
 }
 
@@ -95,7 +87,7 @@ Future<void> requestPermissionsOnStart() async {
 }
 
 Future<void> scheduleNotificationBasedOnLocation({
-  int? id,
+  required int id,
   required String title,
   required String body,
   required DateTime dateTime,
@@ -126,32 +118,55 @@ Future<void> scheduleNotificationBasedOnLocation({
     return;
   }
 
-  await flutterLocalNotificationsPlugin.cancel(id!);
-  await flutterLocalNotificationsPlugin.zonedSchedule(
-    id,
-    title,
-    body,
-    scheduledDate,
-    NotificationDetails(
-      android: AndroidNotificationDetails(
-        channelId,
-        channelName,
-        channelDescription: channelDescription,
-        importance: Importance.max,
-        priority: Priority.high,
-        ticker: 'ticker',
-        playSound: true,
-        enableVibration: true,
-      ),
-      iOS: const DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      ),
+  await flutterLocalNotificationsPlugin.cancel(id);
+  final scheduleMode =
+      await isExactAlarmAllowed()
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+  final details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'ticker',
+      playSound: true,
+      enableVibration: true,
     ),
-    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    matchDateTimeComponents: null,
+    iOS: const DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    ),
   );
+
+  try {
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      details,
+      androidScheduleMode: scheduleMode,
+      matchDateTimeComponents: null,
+    );
+  } on PlatformException catch (error) {
+    if (error.code != 'exact_alarms_not_permitted' ||
+        scheduleMode != AndroidScheduleMode.exactAllowWhileIdle) {
+      rethrow;
+    }
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      details,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: null,
+    );
+  }
 }
 
 Future<void> saveNotificationId(String medicineName, int id) async {

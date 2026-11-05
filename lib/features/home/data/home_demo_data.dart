@@ -166,11 +166,13 @@ class HomeDemoBanner {
     required this.titleAr,
     required this.titleEn,
     required this.imageUrl,
+    this.link,
   });
 
   final String titleAr;
   final String titleEn;
   final String imageUrl;
+  final String? link;
 
   String title(BuildContext context) =>
       Localizations.localeOf(context).languageCode == 'ar' ? titleAr : titleEn;

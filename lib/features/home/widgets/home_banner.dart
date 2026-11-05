@@ -46,7 +46,13 @@ class _HomeBannerState extends State<HomeBanner> {
             final banner = banners[index];
             return GestureDetector(
               onTap:
-                  widget.banners == null
+                  banner.link?.trim().isNotEmpty == true
+                      ? () => HomeNavigation.openBannerProducts(
+                        context,
+                        title: banner.title(context),
+                        link: banner.link!,
+                      )
+                      : widget.banners == null
                       ? () => HomeNavigation.openList(
                         context,
                         title: banner.title(context),

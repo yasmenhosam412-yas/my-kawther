@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/utils/validators.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
 import 'package:elkawther/core/widgets/text_field_with_custom_label.dart';
@@ -14,6 +16,8 @@ import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 
 class AddNewAddressView extends StatelessWidget {
   const AddNewAddressView({super.key});
@@ -54,10 +58,13 @@ class _AddressEditorState extends State<_AddressEditor> {
   late String _city;
   List<DeliveryPrice> _deliveryPrices = [];
   bool _isLoadingDeliveryPrices = true;
+  bool _isSaving = false;
+  bool _isGettingLocation = false;
+  bool _hasCurrentLocation = false;
   String? _deliveryPricesError;
 
   bool get _isEdit => widget.existing != null;
-  bool get _isPharmacy => widget.existing?.isPharmacy == true;
+  bool get _isPharmacy => widget.existing?.isPickupFromPharmacy == true;
 
   double? get _deliveryFee {
     if (_isPharmacy) return 0;
@@ -147,7 +154,8 @@ class _AddressEditorState extends State<_AddressEditor> {
               : 'Enter address details for delivery',
       bottom: ProfilePrimaryButton(
         title: _isEdit ? S.of(context).save : S.of(context).add,
-        onPressed: _save,
+        onPressed: _isSaving ? null : _save,
+        isLoading: _isSaving,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -264,22 +272,67 @@ class _AddressEditorState extends State<_AddressEditor> {
                   CustomTextFormField(
                     hintText: S.of(context).enterTheSiteHere,
                     controller: _landmarkController,
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        _landmarkController.text =
-                            'https://maps.google.com/?q=Cairo';
-                      },
-                      icon: const Icon(
-                        Icons.my_location_rounded,
-                        color: AppColors.primaryColor,
-                      ),
-                    ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return S.of(context).feildRequiredalso;
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed:
+                          _isGettingLocation ? null : _useCurrentLocation,
+                      icon:
+                          _isGettingLocation
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Icon(
+                                _hasCurrentLocation
+                                    ? Icons.check_circle_outline_rounded
+                                    : Icons.my_location_rounded,
+                              ),
+                      label: Text(
+                        _isGettingLocation
+                            ? (isAr
+                                ? 'جارٍ تحديد موقعك...'
+                                : 'Getting your location...')
+                            : _hasCurrentLocation
+                            ? (isAr
+                                ? 'تم تحديد موقعك الحالي'
+                                : 'Current location selected')
+                            : (isAr
+                                ? 'استخدم موقعي الحالي'
+                                : 'Use my current location'),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryColor,
+                        side: BorderSide(
+                          color: AppColors.primaryColor.withOpacity(0.3),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isAr
+                        ? 'سيتم حفظ رابط الخريطة بإحداثيات موقعك'
+                        : 'A map link with your coordinates will be saved',
+                    style: AppTextStyles.noto14w400.copyWith(
+                      color: AppColors.grey,
+                      fontSize: 11,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   TextFieldCustomLabel(label: S.of(context).deliveryValue),
@@ -339,61 +392,171 @@ class _AddressEditorState extends State<_AddressEditor> {
     );
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    final cubit = context.read<AddressCubit>();
-    if (_isEdit) {
-      final id = widget.existing?.id;
-      if (id == null) return;
-      await cubit.editAddress(
-        id,
-        _addressController.text.trim(),
-        _city,
-        _city,
-        _apartmentController.text.trim(),
-        _landmarkController.text.trim(),
-        _isPharmacy ? 'pharmacy' : _type,
-        _streetController.text.trim(),
-        context,
-      );
-      if (!mounted) return;
-      if (cubit.state is! AddressEditedLoadedState) {
-        _showAddressError(cubit.state);
+  Future<void> _useCurrentLocation() async {
+    if (_isGettingLocation) return;
+    setState(() {
+      _isGettingLocation = true;
+      _hasCurrentLocation = false;
+    });
+
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showLocationMessage(
+          isAr
+              ? 'فعّل خدمة الموقع في جهازك ثم حاول مرة أخرى.'
+              : 'Turn on location services on your device and try again.',
+          isAr ? 'الإعدادات' : 'Settings',
+          Geolocator.openLocationSettings,
+        );
         return;
       }
-      ToastMessage().displayMessageToast(
-        S.of(context).addressUpdatedSuccess,
-        AppColors.teal,
-      );
-    } else {
-      await cubit.addAddress(
-        _addressController.text.trim(),
-        _city,
-        _city,
-        _streetController.text.trim(),
-        _landmarkController.text.trim(),
-        _isPharmacy ? 'pharmacy' : _type,
-        _apartmentController.text.trim(),
-        context,
-      );
-      if (!mounted) return;
-      if (cubit.state is! AddressAddedLoadedState) {
-        _showAddressError(cubit.state);
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied) {
+        _showLocationMessage(
+          isAr
+              ? 'لم يتم منح إذن الموقع. اسمح بالوصول للموقع لاستخدام هذه الميزة.'
+              : 'Location permission was denied. Allow location access to use this feature.',
+        );
         return;
       }
-      ToastMessage().displayMessageToast(
-        S.of(context).addressAddedSuccess,
-        AppColors.teal,
+      if (permission == LocationPermission.deniedForever) {
+        _showLocationMessage(
+          isAr
+              ? 'إذن الموقع مرفوض نهائيًا. فعّله من إعدادات التطبيق.'
+              : 'Location permission is permanently denied. Enable it in app settings.',
+          isAr ? 'الإعدادات' : 'Settings',
+          Geolocator.openAppSettings,
+        );
+        return;
+      }
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        _showLocationMessage(
+          isAr
+              ? 'إذن الموقع غير متاح. تحقق من إعدادات التطبيق ثم حاول مرة أخرى.'
+              : 'Location permission is unavailable. Check app settings and try again.',
+          isAr ? 'الإعدادات' : 'Settings',
+          Geolocator.openAppSettings,
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 20),
       );
+      if (!mounted) return;
+
+      final mapUri = Uri.https('www.google.com', '/maps/search/', {
+        'api': '1',
+        'query': '${position.latitude},${position.longitude}',
+      });
+      _landmarkController.text = mapUri.toString();
+      setState(() => _hasCurrentLocation = true);
+    } on TimeoutException {
+      _showLocationMessage(
+        isAr
+            ? 'استغرق تحديد الموقع وقتًا طويلًا. حاول مرة أخرى.'
+            : 'Getting your location timed out. Please try again.',
+      );
+    } on LocationServiceDisabledException {
+      _showLocationMessage(
+        isAr
+            ? 'خدمة الموقع متوقفة. فعّلها ثم حاول مرة أخرى.'
+            : 'Location services are disabled. Turn them on and try again.',
+        isAr ? 'الإعدادات' : 'Settings',
+        Geolocator.openLocationSettings,
+      );
+    } on PermissionDeniedException {
+      _showLocationMessage(
+        isAr
+            ? 'تعذّر الوصول إلى موقعك. تحقق من إذن الموقع في إعدادات التطبيق.'
+            : 'Could not access your location. Check the app location permission.',
+        isAr ? 'الإعدادات' : 'Settings',
+        Geolocator.openAppSettings,
+      );
+    } on PlatformException {
+      _showLocationMessage(
+        isAr
+            ? 'تعذّر تحديد الموقع. تحقق من إعدادات الموقع وحاول مرة أخرى.'
+            : 'Could not get your location. Check location settings and try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _isGettingLocation = false);
     }
-    if (mounted) Navigator.pop(context, true);
+  }
+
+  void _showLocationMessage(
+    String message, [
+    String? actionLabel,
+    Future<bool> Function()? onAction,
+  ]) {
+    if (!mounted) return;
+    AppSnackBar.show(
+      message,
+      actionLabel: actionLabel,
+      onAction: onAction == null ? null : () async => onAction(),
+    );
+  }
+
+  Future<void> _save() async {
+    if (_isSaving || !_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+    final cubit = context.read<AddressCubit>();
+    try {
+      if (_isEdit) {
+        final id = widget.existing?.id;
+        if (id == null) return;
+        await cubit.editAddress(
+          id,
+          _addressController.text.trim(),
+          _city,
+          _city,
+          _apartmentController.text.trim(),
+          _landmarkController.text.trim(),
+          _isPharmacy ? 'pharmacy' : _type,
+          _streetController.text.trim(),
+          context,
+        );
+        if (!mounted) return;
+        if (cubit.state is! AddressEditedLoadedState) {
+          _showAddressError(cubit.state);
+          return;
+        }
+        AppSnackBar.success(S.of(context).addressUpdatedSuccess);
+      } else {
+        await cubit.addAddress(
+          _addressController.text.trim(),
+          _city,
+          _city,
+          _streetController.text.trim(),
+          _landmarkController.text.trim(),
+          _isPharmacy ? 'pharmacy' : _type,
+          _apartmentController.text.trim(),
+          context,
+        );
+        if (!mounted) return;
+        if (cubit.state is! AddressAddedLoadedState) {
+          _showAddressError(cubit.state);
+          return;
+        }
+        AppSnackBar.success(S.of(context).addressAddedSuccess);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   void _showAddressError(AddressCubitState state) {
     if (state is AddressErrorState) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.message.localizedMessage(context))),
-      );
+      AppSnackBar.error(state.message.localizedMessage(context));
     }
   }
 }

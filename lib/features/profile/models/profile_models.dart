@@ -25,6 +25,11 @@ class AddressModel {
     this.isPharmacy,
   });
 
+  bool get isPickupFromPharmacy =>
+      isPharmacy == true || type?.trim().toLowerCase() == 'pharmacy';
+
+  int? get checkoutAddressId => isPickupFromPharmacy ? -1 : id;
+
   factory AddressModel.fromJson(Map<String, dynamic> json) {
     int? parseId(dynamic value) {
       if (value is int) return value;

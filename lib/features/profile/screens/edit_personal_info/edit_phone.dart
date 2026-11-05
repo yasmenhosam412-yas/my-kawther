@@ -1,9 +1,8 @@
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/features/profile/data/profile_local_store.dart';
 import 'package:flutter/material.dart';
 
 import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/utils/validators.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
@@ -46,10 +45,7 @@ class _EditPhoneState extends State<EditPhone> {
         onPressed: () {
           if (!_formKey.currentState!.validate()) return;
           ProfileLocalStore.instance.phone = _phoneController.text.trim();
-          ToastMessage().displayMessageToast(
-            S.of(context).loaded,
-            AppColors.primaryColor,
-          );
+          AppSnackBar.success(S.of(context).loaded);
           Navigator.pop(context);
         },
       ),

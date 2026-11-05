@@ -19,7 +19,6 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
-
 import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/features/products/cubit/product_details_cubit.dart';
 import 'package:elkawther/generated/assets.dart';

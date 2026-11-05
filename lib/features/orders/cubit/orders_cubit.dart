@@ -133,6 +133,40 @@ class OrdersCubit extends Cubit<OrdersState> {
     }
   }
 
+  Future<void> loadGroupedOrders() async {
+    emit(OrdersLoading());
+    try {
+      final response = await ordersServices.getGroupedOrders();
+      emit(OrdersGroupedLoaded(response.data));
+    } on DioException catch (e) {
+      emit(OrdersError(Errors.fromDioError(e)));
+    } catch (e) {
+      emit(OrdersError(Errors(message: e.toString())));
+    }
+  }
+
+  Future<TrackOrder> fetchTrack(int id) {
+    return ordersServices.getOrderTracking(id);
+  }
+
+  Future<String> cancelOrder(int id) {
+    return ordersServices.cancelOrder(id);
+  }
+
+  Future<Map<String, dynamic>> payOrder(int id) {
+    return ordersServices.payOrder(id);
+  }
+
+  Future<Map<String, dynamic>> paymentStatus(int id) {
+    return ordersServices.orderPaymentStatus(id);
+  }
+
+  Future<String> cancelReturn(int id) async {
+    final message = await ordersServices.cancelReturn(id);
+    await getAllReturns();
+    return message;
+  }
+
   Future<void> getAllReturns() async {
     emit(OrdersLoading());
     try {
@@ -165,6 +199,12 @@ class OrdersLoaded extends OrdersState {
   final List<Order> orders;
 
   OrdersLoaded(this.orders);
+}
+
+class OrdersGroupedLoaded extends OrdersState {
+  final OrdersData data;
+
+  OrdersGroupedLoaded(this.data);
 }
 
 class OrderDetailsLoaded extends OrdersState {

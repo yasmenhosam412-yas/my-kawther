@@ -1,9 +1,8 @@
 import 'package:elkawther/features/profile/data/profile_local_store.dart';
 import 'package:flutter/material.dart';
 
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/utils/validators.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
@@ -47,17 +46,11 @@ class _EditEmailState extends State<EditEmail> {
           if (!_formKey.currentState!.validate()) return;
           final updated = _emailController.text.trim();
           if (updated == ProfileLocalStore.instance.email) {
-            ToastMessage().displayMessageToast(
-              S.of(context).yourEmailAlready,
-              Colors.red.shade800,
-            );
+            AppSnackBar.error(S.of(context).yourEmailAlready);
             return;
           }
           ProfileLocalStore.instance.email = updated;
-          ToastMessage().displayMessageToast(
-            S.of(context).loaded,
-            AppColors.primaryColor,
-          );
+          AppSnackBar.success(S.of(context).loaded);
           Navigator.pop(context);
         },
       ),

@@ -1,7 +1,7 @@
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/features/onboarding/models/onboarding_model.dart';
 import 'package:elkawther/features/onboarding/widgets/onboarding_icons.dart';
 import 'package:elkawther/features/onboarding/widgets/onboarding_item.dart';
@@ -76,10 +76,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     if (lastPressed == null ||
         now.difference(lastPressed!) > const Duration(seconds: 2)) {
       lastPressed = now;
-      ToastMessage().displayMessageToast(
-        S.of(context).pressAgainToExit,
-        AppColors.primaryColor,
-      );
+      AppSnackBar.info(S.of(context).pressAgainToExit);
       return;
     }
     SystemNavigator.pop();

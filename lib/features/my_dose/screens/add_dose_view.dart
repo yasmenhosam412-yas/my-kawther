@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
-import 'package:elkawther/features/my_dose/data/dose_local_store.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/generated/l10n.dart';
+import 'package:elkawther/features/my_dose/cubit/my_dose_cubit.dart';
+import 'package:elkawther/features/my_dose/cubit/my_dose_state.dart';
 import 'package:elkawther/features/my_dose/models/medication_model.dart';
 import 'package:elkawther/features/my_dose/models/time_model.dart';
 import 'package:elkawther/features/health_services/screens/vaccines/noti/noti_methods.dart';
@@ -55,6 +58,7 @@ class _AddDoseViewState extends State<AddDoseView> {
   String? _imageUrl;
   bool removeImageFlag = false;
   int? baseId;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -204,58 +208,95 @@ class _AddDoseViewState extends State<AddDoseView> {
   }
 
   Future<void> _saveMedication() async {
-    if (!_validateForm()) return;
+    if (_isSaving || !_validateForm()) return;
 
     final medicineName = _nameController.text.trim();
     final notes = _notesController.text.trim();
-    final medName =
-        medicineName.isNotEmpty ? medicineName : S.of(context).unnamedMedicine;
-    final times = selectedTimes
-        .map(
-          (time) =>
-              '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00',
-        )
-        .toList();
-    final daysToSend = selectedReminderIndex == 1
-        ? [
-            'saturday',
-            'sunday',
-            'monday',
-            'tuesday',
-            'wednesday',
-            'thursday',
-            'friday',
-          ]
-        : List<String>.from(selectedWeekDays);
-    final imagePath = selectedImage?.path ?? _imageUrl;
-
+    final times =
+        selectedTimes
+            .map(
+              (time) =>
+                  '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00',
+            )
+            .toList();
+    final daysToSend =
+        selectedReminderIndex == 1
+            ? [
+              'saturday',
+              'sunday',
+              'monday',
+              'tuesday',
+              'wednesday',
+              'thursday',
+              'friday',
+            ]
+            : List<String>.from(selectedWeekDays);
+    setState(() => _isSaving = true);
+    final requestData = FormData();
+    requestData.fields
+      ..add(MapEntry('name', medicineName))
+      ..add(MapEntry('notes', notes))
+      ..add(MapEntry('quantity_per_time', doseQuantity.toString()))
+      ..add(
+        MapEntry('repeat_type', _getRepeatTypeValue(selectedReminderIndex)),
+      );
+    for (final time in times) {
+      requestData.fields.add(MapEntry('times[]', time));
+    }
+    if (_getRepeatTypeValue(selectedReminderIndex) != 'every_day') {
+      for (final day in daysToSend) {
+        requestData.fields.add(MapEntry('days[]', day));
+      }
+    }
+    final cubit = context.read<MedicationCubit>();
+    final l10n = S.of(context);
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    if (selectedImage != null) {
+      try {
+        requestData.files.add(
+          MapEntry(
+            'image',
+            await MultipartFile.fromFile(
+              selectedImage!.path,
+              filename: selectedImage!.path.split(Platform.pathSeparator).last,
+            ),
+          ),
+        );
+      } on FileSystemException catch (error) {
+        if (!mounted) return;
+        AppSnackBar.error(error.message);
+        setState(() => _isSaving = false);
+        return;
+      }
+    }
     MedicationModel? saved;
     if (widget.isEdit && widget.medicineId != null) {
-      saved = DoseLocalStore.instance.update(
-        id: widget.medicineId!,
-        name: medName,
-        notes: notes,
-        imagePath: imagePath,
-        quantityPerTime: doseQuantity,
-        repeatType: _getRepeatTypeValue(selectedReminderIndex),
-        days: daysToSend,
-        times: times,
-      );
-      await cancelNotificationsForMedicine(medicineName);
+      saved = await cubit.editMedication(widget.medicineId!, requestData);
     } else {
-      saved = DoseLocalStore.instance.add(
-        name: medName,
-        notes: notes,
-        imagePath: imagePath,
-        quantityPerTime: doseQuantity,
-        repeatType: _getRepeatTypeValue(selectedReminderIndex),
-        days: daysToSend,
-        times: times,
+      saved = await cubit.addMedication(requestData);
+    }
+    if (!mounted) return;
+    if (saved == null) {
+      final state = cubit.state;
+      final error =
+          state is AddMedicationError
+              ? state.message
+              : state is EditMedicationError
+              ? state.message
+              : null;
+      AppSnackBar.error(
+        error?.message ??
+            (isArabic ? 'تعذر حفظ الدواء' : 'Could not save medication'),
       );
+      setState(() => _isSaving = false);
+      return;
     }
 
-    if (!mounted || saved == null) return;
-    final l10n = S.of(context);
+    if (widget.isEdit) {
+      await cancelNotificationsForMedicine(
+        widget.medication?.name ?? medicineName,
+      );
+    }
     for (final timeModel in saved.times) {
       final parts = timeModel.time.split(':');
       final time = TimeOfDay(
@@ -268,24 +309,23 @@ class _AddDoseViewState extends State<AddDoseView> {
         );
         await scheduleNotificationBasedOnLocation(
           id: notificationId,
-          title: "${l10n.timeToTakeYourMedicine} : $medicineName",
+          title: "${l10n.timeToTakeYourMedicine} : ${saved.name}",
           body:
-              "${l10n.take} $doseQuantity ${l10n.dose} , ${l10n.note}: $notes",
+              "${l10n.take} ${saved.quantityPerTime} ${l10n.dose} , ${l10n.note}: ${saved.notes ?? ''}",
           dateTime: _nextInstanceOfWeekday(time, day),
           channelId: 'medication_channel',
           channelName: 'Medication Reminders',
           channelDescription: 'Reminders for your medications',
         );
-        await saveNotificationId(medName, notificationId);
+        await saveNotificationId(saved.name, notificationId);
       }
     }
 
     if (!mounted) return;
-    ToastMessage().displayMessageToast(
+    AppSnackBar.success(
       widget.isEdit
           ? S.of(context).medicineEditedSuccessfully
           : S.of(context).aNewMedicineHasBeenSuccessfullyAdded,
-      AppColors.teal,
     );
     if (mounted) Navigator.of(context).pop();
   }
@@ -505,10 +545,11 @@ class _AddDoseViewState extends State<AddDoseView> {
                         CustomTextFormField(
                           controller: _nameController,
                           hintText: S.of(context).nameOfMedicine,
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                              ? S.of(context).errorEnterMedicineName
-                              : null,
+                          validator:
+                              (value) =>
+                                  (value == null || value.trim().isEmpty)
+                                      ? S.of(context).errorEnterMedicineName
+                                      : null,
                         ),
                         const SizedBox(height: 16),
                         TextFieldCustomLabel(label: S.of(context).notes),
@@ -615,33 +656,37 @@ class _AddDoseViewState extends State<AddDoseView> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: selectedTimes
-                                .map(
-                                  (time) => InputChip(
-                                    backgroundColor: AppColors.light,
-                                    label: Text(
-                                      formatTime(time),
-                                      style: AppTextStyles.noto14w400.copyWith(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primaryColor,
+                            children:
+                                selectedTimes
+                                    .map(
+                                      (time) => InputChip(
+                                        backgroundColor: AppColors.light,
+                                        label: Text(
+                                          formatTime(time),
+                                          style: AppTextStyles.noto14w400
+                                              .copyWith(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primaryColor,
+                                              ),
+                                        ),
+                                        deleteIcon: const Icon(
+                                          Icons.close_rounded,
+                                          size: 16,
+                                          color: AppColors.grey,
+                                        ),
+                                        onDeleted: () => removeTime(time),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          side: const BorderSide(
+                                            color: AppColors.lightDarker,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    deleteIcon: const Icon(
-                                      Icons.close_rounded,
-                                      size: 16,
-                                      color: AppColors.grey,
-                                    ),
-                                    onDeleted: () => removeTime(time),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      side: const BorderSide(
-                                        color: AppColors.lightDarker,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                                    )
+                                    .toList(),
                           ),
                       ],
                     ),
@@ -681,16 +726,18 @@ class _AddDoseViewState extends State<AddDoseView> {
                               labelStyle: AppTextStyles.noto14w400.copyWith(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: selected
-                                    ? Colors.white
-                                    : AppColors.darkColor,
+                                color:
+                                    selected
+                                        ? Colors.white
+                                        : AppColors.darkColor,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                                 side: BorderSide(
-                                  color: selected
-                                      ? AppColors.teal
-                                      : AppColors.lightDarker,
+                                  color:
+                                      selected
+                                          ? AppColors.teal
+                                          : AppColors.lightDarker,
                                 ),
                               ),
                               showCheckmark: false,
@@ -703,34 +750,38 @@ class _AddDoseViewState extends State<AddDoseView> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: weekDaysMap.entries.map((entry) {
-                              final selected = selectedWeekDays.contains(
-                                entry.key,
-                              );
-                              return ChoiceChip(
-                                label: Text(entry.value),
-                                selected: selected,
-                                onSelected: (_) => toggleWeekDay(entry.key),
-                                selectedColor: AppColors.primaryColor,
-                                backgroundColor: Colors.white,
-                                labelStyle: AppTextStyles.noto14w400.copyWith(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: selected
-                                      ? Colors.white
-                                      : AppColors.darkColor,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  side: BorderSide(
-                                    color: selected
-                                        ? AppColors.primaryColor
-                                        : AppColors.lightDarker,
-                                  ),
-                                ),
-                                showCheckmark: false,
-                              );
-                            }).toList(),
+                            children:
+                                weekDaysMap.entries.map((entry) {
+                                  final selected = selectedWeekDays.contains(
+                                    entry.key,
+                                  );
+                                  return ChoiceChip(
+                                    label: Text(entry.value),
+                                    selected: selected,
+                                    onSelected: (_) => toggleWeekDay(entry.key),
+                                    selectedColor: AppColors.primaryColor,
+                                    backgroundColor: Colors.white,
+                                    labelStyle: AppTextStyles.noto14w400
+                                        .copyWith(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color:
+                                              selected
+                                                  ? Colors.white
+                                                  : AppColors.darkColor,
+                                        ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(
+                                        color:
+                                            selected
+                                                ? AppColors.primaryColor
+                                                : AppColors.lightDarker,
+                                      ),
+                                    ),
+                                    showCheckmark: false,
+                                  );
+                                }).toList(),
                           ),
                         ],
                       ],
@@ -748,7 +799,7 @@ class _AddDoseViewState extends State<AddDoseView> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _saveMedication,
+                  onPressed: _isSaving ? null : _saveMedication,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                     foregroundColor: Colors.white,
@@ -757,14 +808,26 @@ class _AddDoseViewState extends State<AddDoseView> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Text(
-                    widget.isEdit ? S.of(context).edit : S.of(context).save,
-                    style: AppTextStyles.noto14w400.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
-                  ),
+                  child:
+                      _isSaving
+                          ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : Text(
+                            widget.isEdit
+                                ? S.of(context).edit
+                                : S.of(context).save,
+                            style: AppTextStyles.noto14w400.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
                 ),
               ),
             ),

@@ -71,7 +71,7 @@ class CategoryProductsService {
     String sortBy = 'id',
   }) async {
     final response = await _dio.get(
-      '/api/v1/user/categories/$categoryId/products',
+      '/api/v1/user/categories/$categoryId/products/search',
       queryParameters: {
         'limit': limit,
         'offset': offset,

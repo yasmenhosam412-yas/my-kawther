@@ -6,14 +6,16 @@ class OrdersModel {
 
   factory OrdersModel.fromJson(Map<String, dynamic> json) {
     final rawData = json['data'];
-
-    return OrdersModel(
-      success: json['success'] ?? false,
-      data:
-          rawData is Map<String, dynamic>
-              ? OrdersData.fromJson(rawData)
-              : OrdersData.empty(),
-    );
+    if (rawData is Map) {
+      return OrdersModel(
+        success: json['success'] ?? false,
+        data: OrdersData.fromJson(Map<String, dynamic>.from(rawData)),
+      );
+    }
+    if (json.containsKey('pending') || json.containsKey('completed')) {
+      return OrdersModel(success: true, data: OrdersData.fromJson(json));
+    }
+    return OrdersModel(success: json['success'] ?? false, data: OrdersData.empty());
   }
 }
 
@@ -36,27 +38,32 @@ class OrdersData {
     return OrdersData(
       pending:
           (json['pending'] as List<dynamic>?)
-              ?.map((e) => Order.fromJson(e as Map<String, dynamic>))
+              ?.whereType<Map>()
+              .map((e) => Order.fromJson(Map<String, dynamic>.from(e)))
               .toList() ??
           [],
       completed:
           (json['completed'] as List<dynamic>?)
-              ?.map((e) => Order.fromJson(e as Map<String, dynamic>))
+              ?.whereType<Map>()
+              .map((e) => Order.fromJson(Map<String, dynamic>.from(e)))
               .toList() ??
           [],
       canceled:
           (json['canceled'] as List<dynamic>?)
-              ?.map((e) => Order.fromJson(e as Map<String, dynamic>))
+              ?.whereType<Map>()
+              .map((e) => Order.fromJson(Map<String, dynamic>.from(e)))
               .toList() ??
           [],
       confirmed:
           (json['confirmed'] as List<dynamic>?)
-              ?.map((e) => Order.fromJson(e as Map<String, dynamic>))
+              ?.whereType<Map>()
+              .map((e) => Order.fromJson(Map<String, dynamic>.from(e)))
               .toList() ??
           [],
       onDelivery:
           (json['on_delivery'] as List<dynamic>?)
-              ?.map((e) => Order.fromJson(e as Map<String, dynamic>))
+              ?.whereType<Map>()
+              .map((e) => Order.fromJson(Map<String, dynamic>.from(e)))
               .toList() ??
           [],
     );
@@ -90,11 +97,11 @@ class Order {
 
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
-      orderId: json['order_id'] ?? 0,
+      orderId: int.tryParse('${json['order_id'] ?? json['id'] ?? 0}') ?? 0,
       status: json['status'] ?? '',
-      totalPrice: json['total_price'] ?? '0',
+      totalPrice: (json['total_price'] ?? json['total'] ?? '0').toString(),
       itemsCount: json['items_count']?.toString(),
-      date: json['date'] ?? '',
+      date: (json['date'] ?? json['created_at'] ?? '').toString(),
     );
   }
 }

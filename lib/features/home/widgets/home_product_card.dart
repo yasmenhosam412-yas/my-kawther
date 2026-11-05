@@ -1,7 +1,9 @@
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/core/widgets/product_card.dart';
+import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
-import 'package:elkawther/features/home/data/home_favorites_store.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/features/home/widgets/home_commerce_buttons.dart';
@@ -14,7 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class HomeProductCard extends StatefulWidget {
-  static const double cardAspectRatio = 0.62;
+  static const double cardAspectRatio = ProductCard.cardAspectRatio;
 
   const HomeProductCard({super.key, required this.product});
 
@@ -30,217 +32,82 @@ class _HomeProductCardState extends State<HomeProductCard> {
     final product = widget.product;
     final numberFormat = NumberFormat('#,##0');
     final currency = S.of(context).currency;
-    final isFav = HomeFavoritesStore.instance.contains(product.id);
-
-    return Material(
+    return BlocBuilder<FavouriteCubit, FavouriteState>(
+      builder: (context, state) {
+        final isFav = context.read<FavouriteCubit>().isProductFavourite(
+          product.id,
+        );
+        return Material(
       color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => HomeNavigation.openProduct(context, product),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryColor.withOpacity(0.10),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1.35,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                        child: ColoredBox(
-                          color: AppColors.light,
-                          child: HomeCatalogImage(
-                            assetPath: product.imageUrl,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (product.hasDiscount)
-                      PositionedDirectional(
-                        top: 10,
-                        start: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.teal,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            product.discountLabel ?? S.of(context).discount,
-                            style: AppTextStyles.noto14w400.copyWith(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    PositionedDirectional(
-                      top: 8,
-                      end: 8,
-                      child: HomeFavoriteButton(
-                        isFavorite: isFav,
-                        onPressed: () {
-                          HomeFavoritesStore.instance.toggle(product);
-                          setState(() {});
-                        },
-                      ),
-                    ),
-                    PositionedDirectional(
-                      bottom: -16,
-                      end: 10,
-                      child: HomeCartAddButton(
-                        onPressed: () {
-                          final authState = context.read<AuthCubit>().state;
-                          if (authState is! AuthLoadedLogin &&
-                              authState is! AuthLoadedRegister) {
-                            showGuestLoginDialog(context);
-                            return;
-                          }
-                          final sizeId = product.productSizeId;
-                          if (sizeId == null || sizeId <= 0) {
-                            HomeNavigation.openProduct(context, product);
-                            return;
-                          }
-                          context
-                              .read<CartCubit>()
-                              .addItem(product.id, 1, sizeId)
-                              .then((result) {
-                                if (!context.mounted) return;
-                                result.fold(
-                                  (error) => ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        error.localizedMessage(context),
-                                      ),
-                                    ),
-                                  ),
-                                  (_) => ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(
-                                    SnackBar(
-                                      content: Text(S.of(context).addedToCart),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  ),
-                                );
-                              });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name(context),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.noto14w400.copyWith(
-                        color: AppColors.darkColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1.25,
-                      ),
-                    ),
-                    if (product.reviews > 0) ...[
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap:
-                            () => HomeNavigation.openRatings(context, product),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF8E8),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.star_rounded,
-                                color: Color(0xFFFFC107),
-                                size: 13,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '${product.rating}',
-                                style: AppTextStyles.noto14w400.copyWith(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.darkColor,
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '(${product.reviews})',
-                                style: AppTextStyles.noto14w400.copyWith(
-                                  fontSize: 10,
-                                  color: AppColors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Text(
-                      '${numberFormat.format(product.price)} $currency',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.noto16w400.copyWith(
-                        color: AppColors.primaryColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (product.originalPrice != null)
-                      Text(
-                        '${numberFormat.format(product.originalPrice)} $currency',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.noto14w400.copyWith(
-                          color: AppColors.gray,
-                          fontSize: 11,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+      child: ProductCard(
+        image: HomeCatalogImage(
+          assetPath: product.imageUrl,
+          fit: BoxFit.contain,
         ),
+        title: product.name(context),
+        priceText: '${numberFormat.format(product.price)} $currency',
+        originalPriceText:
+            product.originalPrice == null
+                ? null
+                : '${numberFormat.format(product.originalPrice)} $currency',
+        discountBadge: product.hasDiscount
+            ? (product.discountLabel ?? S.of(context).discount)
+            : null,
+        favoriteButton: HomeFavoriteButton(
+          isFavorite: isFav,
+          onPressed: () {
+            final authState = context.read<AuthCubit>().state;
+            if (authState is! AuthLoadedLogin &&
+                authState is! AuthLoadedRegister) {
+              showGuestLoginDialog(context);
+              return;
+            }
+            context.read<FavouriteCubit>().toggleFavourite(
+              productId: product.id,
+              context: context,
+            );
+          },
+        ),
+        actionButton: HomeCartAddButton(
+          onPressed: () {
+            final authState = context.read<AuthCubit>().state;
+            if (authState is! AuthLoadedLogin &&
+                authState is! AuthLoadedRegister) {
+              showGuestLoginDialog(context);
+              return;
+            }
+            final sizeId = product.productSizeId;
+            if (sizeId == null || sizeId <= 0) {
+              HomeNavigation.openProduct(context, product);
+              return;
+            }
+            context
+                .read<CartCubit>()
+                .addItem(product.id, 1, sizeId)
+                .then((result) {
+                  if (!context.mounted) return;
+                  result.fold(
+                    (error) =>
+                        AppSnackBar.error(error.localizedMessage(context)),
+                    (_) => AppSnackBar.success(S.of(context).addedToCart),
+                  );
+                });
+          },
+        ),
+        ratingRow: product.reviews > 0
+            ? GestureDetector(
+                onTap: () => HomeNavigation.openRatings(context, product),
+                behavior: HitTestBehavior.opaque,
+                child: ProductCard.ratingChip(
+                  rating: (product.rating as num).toDouble(),
+                  reviews: product.reviews,
+                ),
+              )
+            : null,
+        onTap: () => HomeNavigation.openProduct(context, product),
       ),
+    );
+      },
     );
   }
 }

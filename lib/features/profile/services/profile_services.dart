@@ -270,10 +270,10 @@ class ProfileServices {
     }
   }
 
-  Future<PointsResponse> getPointsValid() async {
+  Future<PointsResponse> getPointsHistory() async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.get(
-      "/api/v1/user/points/valid",
+      "/api/user/points",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -282,19 +282,28 @@ class ProfileServices {
       ),
     );
 
-    final data = response.data;
+    return PointsResponse.fromJson(_pointsBody(response.data));
+  }
 
-    if (data is Map<String, dynamic> && data.containsKey('orders')) {
-      return PointsResponse.fromJson(data);
-    } else {
-      throw Exception("Unexpected response format");
-    }
+  Future<PointsResponse> getPointsValid() async {
+    final token = await storageHelper.safeRead('token');
+    final response = await _dio.get(
+      "/api/user/points/valid",
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    return PointsResponse.fromJson(_pointsBody(response.data));
   }
 
   Future<PointsResponse> getPointsNotValid() async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.get(
-      "/api/v1/user/points/notvalid",
+      "/api/user/points/notvalid",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -303,19 +312,13 @@ class ProfileServices {
       ),
     );
 
-    final data = response.data;
-
-    if (data is Map<String, dynamic> && data.containsKey('orders')) {
-      return PointsResponse.fromJson(data);
-    } else {
-      throw Exception("Unexpected response format");
-    }
+    return PointsResponse.fromJson(_pointsBody(response.data));
   }
 
   Future<PointsResponse> getPointsExpired() async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.get(
-      "/api/v1/user/points/expired",
+      "/api/user/points/expired",
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -324,13 +327,24 @@ class ProfileServices {
       ),
     );
 
-    final data = response.data;
+    return PointsResponse.fromJson(_pointsBody(response.data));
+  }
 
-    if (data is Map<String, dynamic> && data.containsKey('orders')) {
-      return PointsResponse.fromJson(data);
-    } else {
-      throw Exception("Unexpected response format");
+  Map<String, dynamic> _pointsBody(dynamic data) {
+    if (data is Map && data['data'] is Map) {
+      return Map<String, dynamic>.from(data['data'] as Map);
     }
+    if (data is Map && data['data'] is List) {
+      return {
+        'orders': data['data'],
+        'valid_points_total': data['valid_points_total'] ?? data['total'],
+        'consumed_points_total': data['consumed_points_total'],
+        'expired_points_total': data['expired_points_total'],
+      };
+    }
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is List) return {'orders': data};
+    return {};
   }
 
   Future<List<DeliveryPrice>> getDeliveryPricesAndCities() async {
@@ -340,14 +354,14 @@ class ProfileServices {
     );
 
     final data = response.data;
-
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      final List<dynamic> pricesJson = data['data'];
-      return pricesJson
-          .map((json) => DeliveryPrice.fromJson(json as Map<String, dynamic>))
-          .toList();
-    } else {
-      throw Exception("Unexpected response format");
-    }
+    final raw = data is List
+        ? data
+        : data is Map && data['data'] is List
+        ? data['data'] as List
+        : const [];
+    return raw
+        .whereType<Map>()
+        .map((json) => DeliveryPrice.fromJson(Map<String, dynamic>.from(json)))
+        .toList();
   }
 }

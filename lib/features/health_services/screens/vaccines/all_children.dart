@@ -1,9 +1,12 @@
 import 'package:elkawther/core/routes/routes.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/features/health_services/data/health_local_calc.dart';
+import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
+import 'package:elkawther/features/health_services/models/vaccines.dart';
 import 'package:elkawther/features/health_services/widgets/health_service_scaffold.dart';
 import 'package:elkawther/generated/assets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/generated/l10n.dart';
 
@@ -15,9 +18,33 @@ class AllChildren extends StatefulWidget {
 }
 
 class _AllChildrenState extends State<AllChildren> {
+  List<Child> _children = [];
+
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      _loaded = true;
+      _loadChildren();
+    }
+  }
+
+  Future<void> _loadChildren() async {
+    final cubit = context.read<HealthServiceCubit>();
+    await cubit.fetchVaccineFullData(context: context);
+    final state = cubit.state;
+    if (!mounted) return;
+    if (state is HealthServicesVaccineFullLoaded) {
+      setState(() => _children = state.fullVaccinesModel.children);
+    } else if (state is HealthServicesError) {
+      AppSnackBar.error(state.message.message);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final children = HealthLocalStore.instance.children;
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     return HealthServiceScaffold(
@@ -30,7 +57,7 @@ class _AllChildrenState extends State<AllChildren> {
           if (mounted) setState(() {});
         },
       ),
-      body: children.isEmpty
+      body: _children.isEmpty
           ? Center(
               child: Text(
                 S.of(context).no_childred,
@@ -42,10 +69,10 @@ class _AllChildrenState extends State<AllChildren> {
             )
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              itemCount: children.length,
+              itemCount: _children.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final child = children[index];
+                final child = _children[index];
                 final isGirl = child.gender == 'أنثى';
                 return Material(
                   color: Colors.white,
@@ -129,6 +156,7 @@ class _AllChildrenState extends State<AllChildren> {
   }
 
   void _confirmDelete(int id) {
+    final stateContext = context;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -162,11 +190,12 @@ class _AllChildrenState extends State<AllChildren> {
               HealthPrimaryButton(
                 title: S.of(context).yes_delete,
                 color: const Color(0xFFEF4444),
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
-                  setState(() {
-                    HealthLocalStore.instance.removeChild(id);
-                  });
+                  await stateContext
+                      .read<HealthServiceCubit>()
+                      .deleteChild(id);
+                  _loadChildren();
                 },
               ),
               const SizedBox(height: 8),

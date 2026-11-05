@@ -1,6 +1,7 @@
 import 'package:app_links/app_links.dart';
 import 'package:elkawther/core/di/service_locator.dart';
 import 'package:elkawther/core/providers/locale_provider.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/routes/app_router.dart';
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/services/local_notifications.dart';
@@ -14,6 +15,7 @@ import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/notifications/cubit/notification_cubit.dart';
 import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
+import 'package:elkawther/features/my_dose/cubit/my_dose_cubit.dart';
 import 'package:elkawther/features/profile/cubit/reviews_cubit.dart';
 import 'package:elkawther/firebase_options.dart';
 import 'package:elkawther/generated/l10n.dart';
@@ -66,7 +68,6 @@ Future<void> main() async {
   Bloc.observer = MyBlocObserver();
   await setupServiceLocator();
 
-
   final localeProvider = LocaleProvider();
   await localeProvider.loadLocale();
   await S.load(localeProvider.locale);
@@ -81,6 +82,7 @@ Future<void> main() async {
         BlocProvider<HomeCubit>(create: (_) => getIt<HomeCubit>()),
         BlocProvider<ReviewCubit>(create: (_) => getIt<ReviewCubit>()),
         BlocProvider<ProfileCubit>(create: (_) => getIt<ProfileCubit>()),
+        BlocProvider<MedicationCubit>(create: (_) => getIt<MedicationCubit>()),
         BlocProvider(create: (_) => getIt<NotificationCubit>()),
       ],
       child: ChangeNotifierProvider.value(
@@ -240,6 +242,7 @@ class _MyAppState extends State<MyApp> {
       builder:
           (context, child) => MaterialApp(
             navigatorKey: navigatorKey,
+            scaffoldMessengerKey: AppSnackBar.messengerKey,
             debugShowCheckedModeBanner: false,
             initialRoute: Routes.splash,
             onGenerateRoute: RouteGenerator.generateRoute,

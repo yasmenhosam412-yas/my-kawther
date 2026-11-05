@@ -25,7 +25,7 @@
     <application
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:label="صيدلية الكوثر"
+        android:label="My Pharmacy"
         android:usesCleartextTraffic="true">
 
         <activity

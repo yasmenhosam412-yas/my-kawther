@@ -1,13 +1,17 @@
 import 'dart:io';
 import 'package:elkawther/features/health_services/models/monthly_period_calc_model.dart';
 import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
+import 'package:elkawther/features/profile/cubit/points_cubit.dart';
 import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
+import 'package:elkawther/features/profile/services/loyalty_service.dart';
+import 'package:elkawther/features/profile/services/profile_services.dart';
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/routes/route_extras.dart';
 import 'package:elkawther/features/health_services/models/pregnancy_calc_model.dart';
 import 'package:elkawther/features/health_services/models/vaccines.dart';
 import 'package:elkawther/features/profile/models/profile_models.dart';
 import 'package:elkawther/features/checkout/screens/check_out_success_view.dart';
+import 'package:elkawther/features/orders/models/order_model.dart';
 import 'package:elkawther/features/notifications/screens/notifications_view.dart';
 import 'package:elkawther/features/profile/screens/profile_points.dart';
 import 'package:elkawther/features/returns/screens/refund_product_details_view.dart';
@@ -69,6 +73,7 @@ import 'package:elkawther/features/health_services/screens/pregnancy/pregnancy_c
 import 'package:elkawther/features/health_services/screens/services_view.dart';
 import 'package:elkawther/features/profile/screens/profile_view.dart';
 import 'package:elkawther/features/health_services/screens/weight_calculator/weight_calc.dart';
+import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
 import 'package:get_it/get_it.dart';
 
 class RouteGenerator {
@@ -160,11 +165,15 @@ class RouteGenerator {
         }
 
       case Routes.checkoutSuccess:
-        final args = settings.arguments as Map<String, dynamic>;
-        return _material(
-          CheckOutSuccessView(points: args['points'], gift: args['gift']),
-          settings,
-        );
+        final order = settings.arguments is OrderModel
+            ? settings.arguments as OrderModel
+            : OrderModel(
+                orderId: 0,
+                totalPrice: 0,
+                pointsEarned: 0,
+                message: '',
+              );
+        return _material(CheckOutSuccessView(order: order), settings);
 
       case Routes.categories:
         return _material(const CategoriesView(), settings);
@@ -180,7 +189,7 @@ class RouteGenerator {
             times: args['times'],
             name: args['name'],
             details: args['details'],
-            quantity: args['quntity'],
+            quantity: args['quantity'],
             medication: args['medication'],
             image: args['image'],
             isEdit: args['isEdit'],
@@ -194,22 +203,58 @@ class RouteGenerator {
         return _material(const ServicesView(), settings);
 
       case Routes.pregnancyServices:
-        return _material(const PregnancyCalc(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: const PregnancyCalc(),
+          ),
+          settings,
+        );
 
       case Routes.healthServices:
-        return _material(const HealthCalculator(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: const HealthCalculator(),
+          ),
+          settings,
+        );
 
       case Routes.bloodSugar:
-        return _material(const BloodSugarCalc(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: const BloodSugarCalc(),
+          ),
+          settings,
+        );
 
       case Routes.bloodPressure:
-        return _material(const PressureCalc(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: const PressureCalc(),
+          ),
+          settings,
+        );
 
       case Routes.bodyWeight:
-        return _material(WeightCalc(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: WeightCalc(),
+          ),
+          settings,
+        );
 
       case Routes.vaccines:
-        return _material(const VaccineCalc(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: const VaccineCalc(),
+          ),
+          settings,
+        );
 
       case Routes.beautyConsultation:
         return _material(const BeautyConsultation(), settings);
@@ -242,10 +287,22 @@ class RouteGenerator {
 
       case Routes.myOrders:
         final args = settings.arguments as bool? ?? false;
-        return _material(MyOrders(afterConfrim: args), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<OrdersCubit>()..loadGroupedOrders(),
+            child: MyOrders(afterConfrim: args),
+          ),
+          settings,
+        );
 
       case Routes.orderDetails:
-        return _material(const OrderDetails(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<OrdersCubit>(),
+            child: const OrderDetails(),
+          ),
+          settings,
+        );
 
       case Routes.returnProduct:
         {
@@ -302,7 +359,16 @@ class RouteGenerator {
         return _material(const ThanksRateView(), settings);
 
       case Routes.profilePoints:
-        return _material(const ProfilePoints(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => PointsCubit(
+              getIt<ProfileServices>(),
+              getIt<LoyaltyService>(),
+            ),
+            child: const ProfilePoints(),
+          ),
+          settings,
+        );
 
       case Routes.favourite:
         return _material(const FavoritesView(), settings);
@@ -383,7 +449,13 @@ class RouteGenerator {
         return _material(HealthTestResult(monthlyPeriodCalc: args), settings);
       case Routes.vaccinesTest:
         final args = settings.arguments as Map<String, dynamic>;
-        return _material(VaccineResult(child: args['child']), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: VaccineResult(child: args['child']),
+          ),
+          settings,
+        );
       case Routes.scheduleVaccine:
         final args = settings.arguments as Map<String, dynamic>;
         final List<FullVaccinesModel> upcoming =
@@ -392,10 +464,25 @@ class RouteGenerator {
         return _material(VaccineScedule(upcomingVaccines: upcoming), settings);
 
       case Routes.allChildren:
-        return _material(const AllChildren(), settings);
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: const AllChildren(),
+          ),
+          settings,
+        );
 
       case Routes.fertilityCalendar:
-        return _material(const FertilityCalendarScreen(), settings);
+        final periodArgs = settings.arguments;
+        return _material(
+          BlocProvider(
+            create: (context) => getIt<HealthServiceCubit>(),
+            child: FertilityCalendarScreen(
+              period: periodArgs is MonthlyPeriodCalc ? periodArgs : null,
+            ),
+          ),
+          settings,
+        );
 
       default:
         return _material(

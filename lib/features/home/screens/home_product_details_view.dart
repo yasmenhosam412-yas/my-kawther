@@ -1,14 +1,18 @@
 import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
+import 'package:elkawther/core/widgets/guest_user_dialog.dart';
+import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/data/home_cart_store.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
-import 'package:elkawther/features/home/data/home_favorites_store.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/features/home/widgets/home_commerce_buttons.dart';
 import 'package:elkawther/features/home/widgets/home_sub_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class HomeProductDetailsView extends StatefulWidget {
@@ -25,9 +29,12 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final numberFormat = NumberFormat('#,##0');
-    final isFav = HomeFavoritesStore.instance.contains(product.id);
-
-    return HomeSubScaffold(
+    return BlocBuilder<FavouriteCubit, FavouriteState>(
+      builder: (context, state) {
+        final isFav = context.read<FavouriteCubit>().isProductFavourite(
+          product.id,
+        );
+        return HomeSubScaffold(
       title: product.name(context),
       actions: [
         HomeFavoriteButton(
@@ -35,8 +42,16 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
           size: 40,
           iconSize: 18,
           onPressed: () {
-            HomeFavoritesStore.instance.toggle(product);
-            setState(() {});
+            final authState = context.read<AuthCubit>().state;
+            if (authState is! AuthLoadedLogin &&
+                authState is! AuthLoadedRegister) {
+              showGuestLoginDialog(context);
+              return;
+            }
+            context.read<FavouriteCubit>().toggleFavourite(
+              productId: product.id,
+              context: context,
+            );
           },
         ),
       ],
@@ -47,12 +62,7 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
             title: S.of(context).addToCart,
             onPressed: () {
               HomeCartStore.instance.add(product);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(S.of(context).addedToCart),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              AppSnackBar.success(S.of(context).addedToCart);
             },
           ),
         ),
@@ -253,6 +263,8 @@ class _HomeProductDetailsViewState extends State<HomeProductDetailsView> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

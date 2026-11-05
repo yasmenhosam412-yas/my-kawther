@@ -10,10 +10,12 @@ class DeliveryPrice {
   });
 
   factory DeliveryPrice.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
     return DeliveryPrice(
-      id: json['id'],
-      governorate: json['governorate'],
-      price: json['price'],
+      id: id is int ? id : int.tryParse('${id ?? 0}') ?? 0,
+      governorate: (json['governorate'] ?? json['city'] ?? '').toString(),
+      price: (json['price'] ?? json['delivery_price'] ?? json['delivery_fee'] ?? '0')
+          .toString(),
     );
   }
 

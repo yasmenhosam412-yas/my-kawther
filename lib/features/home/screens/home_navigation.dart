@@ -10,11 +10,12 @@ import 'package:elkawther/core/widgets/guest_user_dialog.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/home/screens/home_brands_browse_view.dart';
+import 'package:elkawther/features/home/screens/home_banner_products_view.dart';
 import 'package:elkawther/features/home/screens/home_cart_view.dart';
 import 'package:elkawther/features/home/screens/home_notifications_view.dart';
 import 'package:elkawther/features/home/screens/home_problems_browse_view.dart';
 import 'package:elkawther/features/home/screens/home_products_list_view.dart';
-import 'package:elkawther/features/home/screens/home_search_view.dart';
+import 'package:elkawther/features/search/screens/search_view.dart';
 import 'package:elkawther/features/home/widgets/home_ratings_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -51,6 +52,39 @@ class HomeNavigation {
     required List<HomeDemoProduct> products,
   }) {
     _push(context, HomeProductsListView(title: title, products: products));
+  }
+
+  static void openBannerProducts(
+    BuildContext context, {
+    required String title,
+    required String link,
+  }) {
+    final path = Uri.tryParse(link)?.path.toLowerCase() ?? '';
+
+    if (path.endsWith('/health_issues')) {
+      final homeCubit = context.read<HomeCubit>();
+      if (homeCubit.state.healthIssues == null) {
+        homeCubit.loadHomeData();
+      }
+      _push(context, const HomeProblemsBrowseView());
+      return;
+    }
+
+    if (path.endsWith('/categories')) {
+      _push(context, CategoriesView(fromBanner: true, bannerTitle: title));
+      return;
+    }
+
+    if (path.endsWith('/brands')) {
+      final homeCubit = context.read<HomeCubit>();
+      if (homeCubit.state.brandsModel == null) {
+        homeCubit.loadHomeData();
+      }
+      _push(context, const HomeBrandsBrowseView());
+      return;
+    }
+
+    _push(context, HomeBannerProductsView(title: title, link: link));
   }
 
   static void openCategories(BuildContext context, {int? selectedCategoryId}) {
@@ -140,7 +174,13 @@ class HomeNavigation {
   }
 
   static void openSearch(BuildContext context) {
-    _push(context, const HomeSearchView());
+    _push(
+      context,
+      BlocProvider.value(
+        value: context.read<HomeCubit>(),
+        child: const SearchView(),
+      ),
+    );
   }
 
   static void openCart(BuildContext context) {

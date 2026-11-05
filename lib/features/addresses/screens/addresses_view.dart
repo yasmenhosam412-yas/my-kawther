@@ -1,10 +1,11 @@
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
 import 'package:elkawther/features/profile/models/profile_models.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
+import 'package:elkawther/features/home/widgets/shimmer_box.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,7 +22,9 @@ class _AddressesViewState extends State<AddressesView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AddressCubit>().getAllAddresses(context);
+      if (mounted && context.read<AddressCubit>().addresses == null) {
+        context.read<AddressCubit>().getAllAddresses(context);
+      }
     });
   }
 
@@ -32,13 +35,12 @@ class _AddressesViewState extends State<AddressesView> {
     return BlocConsumer<AddressCubit, AddressCubitState>(
       listener: (context, state) {
         if (state is AddressErrorState) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message.localizedMessage(context))),
-          );
+          AppSnackBar.error(state.message.localizedMessage(context));
         }
       },
       builder: (context, state) {
-        final addresses = context.watch<AddressCubit>().addresses ?? [];
+        final addresses = context.read<AddressCubit>().addresses ?? [];
+        final isLoading = state is AddressLoadingState;
         return ProfileScaffold(
           title: S.of(context).addressesTitle,
           subtitle:
@@ -51,8 +53,8 @@ class _AddressesViewState extends State<AddressesView> {
           ),
           body:
               addresses.isEmpty
-                  ? state is AddressLoadingState
-                      ? const Center(child: CircularProgressIndicator())
+                  ? isLoading
+                      ? const _AddressesLoadingList()
                       : state is AddressErrorState
                       ? Center(
                         child: Column(
@@ -98,6 +100,7 @@ class _AddressesViewState extends State<AddressesView> {
                         ),
                       )
                   : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     itemCount: addresses.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -106,6 +109,7 @@ class _AddressesViewState extends State<AddressesView> {
                       return _AddressCard(
                         address: address,
                         selected: address.isDefault,
+                        busy: isLoading,
                       );
                     },
                   ),
@@ -115,11 +119,62 @@ class _AddressesViewState extends State<AddressesView> {
   }
 }
 
+class _AddressesLoadingList extends StatelessWidget {
+  const _AddressesLoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      itemCount: 3,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder:
+          (context, index) => const DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.all(Radius.circular(20)),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ShimmerBox(height: 42, width: 42, radius: 13),
+                      SizedBox(width: 10),
+                      ShimmerBox(height: 16, width: 100, radius: 8),
+                      Spacer(),
+                      ShimmerBox(height: 38, width: 38, radius: 12),
+                      SizedBox(width: 6),
+                      ShimmerBox(height: 38, width: 38, radius: 12),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  ShimmerBox(height: 14, width: 210, radius: 7),
+                  SizedBox(height: 8),
+                  ShimmerBox(height: 12, width: 130, radius: 6),
+                  SizedBox(height: 14),
+                  ShimmerBox(height: 16, width: double.infinity, radius: 8),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+}
+
 class _AddressCard extends StatelessWidget {
-  const _AddressCard({required this.address, required this.selected});
+  const _AddressCard({
+    required this.address,
+    required this.selected,
+    required this.busy,
+  });
 
   final AddressModel address;
   final bool selected;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -145,114 +200,154 @@ class _AddressCard extends StatelessWidget {
             ? S.of(context).work
             : S.of(context).homeAddress;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? color : color.withOpacity(0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(selected ? 0.14 : 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  typeLabel,
-                  style: AppTextStyles.noto16w400.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.darkColor,
-                  ),
-                ),
-              ),
-              if (!isPharmacy)
-                IconButton(
-                  onPressed: () => _confirmDelete(context),
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: AppColors.grey,
-                  ),
-                ),
-              IconButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    Routes.editAddress,
-                    arguments: address,
-                  );
-                },
-                icon: const Icon(Icons.edit_outlined, color: AppColors.grey),
-                tooltip: S.of(context).edit,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isPharmacy
-                ? (address.address ?? '')
-                : '${address.address ?? ''} - ${address.apartment ?? ''}',
-            style: AppTextStyles.noto14w400.copyWith(
-              color: AppColors.darkColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (!isPharmacy) ...[
-            const SizedBox(height: 4),
-            Text(
-              '${S.of(context).government} : ${address.city ?? ''}',
-              style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? color : color.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(selected ? 0.10 : 0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
-          const SizedBox(height: 8),
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              if (address.id != null) {
-                context.read<AddressCubit>().toggleDefaultAddress(
-                  address.id!,
-                  context,
-                );
-              }
-            },
-            child: Row(
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Checkbox(
-                  value: selected,
-                  activeColor: color,
-                  onChanged: (_) {
-                    if (address.id != null) {
-                      context.read<AddressCubit>().toggleDefaultAddress(
-                        address.id!,
-                        context,
-                      );
-                    }
-                  },
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(icon, color: color),
                 ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isPharmacy
-                        ? S.of(context).takeFromPharamcy
-                        : S.of(context).useAsShippingAddress,
-                    style: AppTextStyles.noto14w400.copyWith(
+                    typeLabel,
+                    style: AppTextStyles.noto16w400.copyWith(
+                      fontWeight: FontWeight.w800,
                       color: AppColors.darkColor,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
+                if (selected) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      S.of(context).defultAddress,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                if (!isPharmacy)
+                  IconButton(
+                    onPressed: busy ? null : () => _confirmDelete(context),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.grey,
+                    ),
+                    tooltip: S.of(context).yes_delete,
+                  ),
+                IconButton(
+                  onPressed:
+                      busy
+                          ? null
+                          : () {
+                            Navigator.pushNamed(
+                              context,
+                              Routes.editAddress,
+                              arguments: address,
+                            );
+                          },
+                  icon: const Icon(Icons.edit_outlined, color: AppColors.grey),
+                  tooltip: S.of(context).edit,
+                ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              isPharmacy
+                  ? (address.address ?? '')
+                  : [
+                        address.address,
+                        if (address.apartment?.isNotEmpty == true)
+                          address.apartment,
+                      ]
+                      .whereType<String>()
+                      .where((part) => part.isNotEmpty)
+                      .join(' - '),
+              style: AppTextStyles.noto14w400.copyWith(
+                color: AppColors.darkColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (!isPharmacy && address.city?.isNotEmpty == true) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${S.of(context).government} : ${address.city}',
+                style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
+              ),
+            ],
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap:
+                  busy || address.id == null
+                      ? null
+                      : () => context.read<AddressCubit>().toggleDefaultAddress(
+                        address.id!,
+                        context,
+                      ),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: selected,
+                    activeColor: color,
+                    onChanged:
+                        busy || address.id == null
+                            ? null
+                            : (_) => context
+                                .read<AddressCubit>()
+                                .toggleDefaultAddress(address.id!, context),
+                  ),
+                  Expanded(
+                    child: Text(
+                      isPharmacy
+                          ? S.of(context).takeFromPharamcy
+                          : S.of(context).useAsShippingAddress,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: AppColors.darkColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -335,10 +430,8 @@ class _AddressCard extends StatelessWidget {
       if (!context.mounted) return;
       await context.read<AddressCubit>().deleteAddress(address.id!, context);
       if (!context.mounted) return;
-      ToastMessage().displayMessageToast(
-        S.of(context).loaded,
-        AppColors.primaryColor,
-      );
+      if (context.read<AddressCubit>().state is AddressErrorState) return;
+      AppSnackBar.success(S.of(context).loaded);
     }
   }
 }

@@ -1,8 +1,10 @@
-import 'package:elkawther/features/health_services/data/health_local_calc.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/l10n.dart';
+import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
 import 'package:elkawther/features/health_services/widgets/weight_bottom_sheet.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
 import 'package:elkawther/core/widgets/text_field_with_custom_label.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 
 import 'package:elkawther/core/theme/app_padding.dart';
@@ -23,31 +25,23 @@ class WeightCalc extends StatelessWidget {
       subtitle: isAr ? 'حساب مؤشر كتلة الجسم' : 'BMI calculator',
       bottom: HealthPrimaryButton(
         title: S.of(context).calc,
-        onPressed: () {
+        onPressed: () async {
           final weightText = weightController.text.trim();
           final heightText = heightController.text.trim();
 
           if (heightText.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(S.of(context).enterHeight)),
-            );
+            AppSnackBar.warning(S.of(context).enterHeight);
             return;
           }
 
           if (heightController.text.length > 3 ||
               weightController.text.length > 3) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(S.of(context).pleaseEnterValidNumber),
-              ),
-            );
+            AppSnackBar.warning(S.of(context).pleaseEnterValidNumber);
             return;
           }
 
           if (weightText.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(S.of(context).enterWeight)),
-            );
+            AppSnackBar.warning(S.of(context).enterWeight);
             return;
           }
 
@@ -59,19 +53,25 @@ class WeightCalc extends StatelessWidget {
           try {
             final desiredWeight = double.parse(normalizeInput(weightText));
             final desiredHeight = double.parse(normalizeInput(heightText));
-            weightResultBottomSheet(
-              context,
-              HealthLocalCalc.bodyWeight(
-                weightKg: desiredWeight,
-                heightCm: desiredHeight,
-              ),
+
+            final cubit = context.read<HealthServiceCubit>();
+            await cubit.fetchBodyWeightData(
+              weight: desiredWeight,
+              height: desiredHeight,
+              unit: 'metric',
+              context: context,
             );
+
+            if (!context.mounted) return;
+
+            final state = cubit.state;
+            if (state is HealthServicesLoaded) {
+              weightResultBottomSheet(context, state.weightBody);
+            } else if (state is HealthServicesError) {
+              AppSnackBar.error(state.message.message);
+            }
           } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(S.of(context).pleaseEnterValidNumber),
-              ),
-            );
+            AppSnackBar.error(S.of(context).pleaseEnterValidNumber);
           }
         },
       ),

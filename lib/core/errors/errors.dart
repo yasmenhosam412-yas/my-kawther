@@ -74,10 +74,9 @@ class Errors extends Equatable {
   }
 
   factory Errors.fromDioError(DioError e) {
-    if (e.response != null &&
-        e.response?.data != null &&
-        e.response?.data is Map<String, dynamic>) {
-      final error = Errors.fromJson(e.response!.data);
+    final data = e.response?.data;
+    if (data is Map) {
+      final error = Errors.fromJson(Map<String, dynamic>.from(data));
       return Errors(
         message: error.message,
         statusCode: error.statusCode ?? e.response?.statusCode,

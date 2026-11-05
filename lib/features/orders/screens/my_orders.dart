@@ -1,8 +1,9 @@
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/features/orders/data/orders_local_store.dart';
+import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
 import 'package:elkawther/features/orders/models/orders_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:elkawther/features/orders/widgets/order_card.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 import 'package:elkawther/generated/l10n.dart';
@@ -32,22 +33,20 @@ class _MyOrdersState extends State<MyOrders> {
     }
   }
 
-  List<Order> _ordersFor(int index) {
-    final store = OrdersLocalStore.instance;
+  List<Order> _ordersFor(OrdersData data, int index) {
     switch (index) {
       case 1:
-        return store.past();
+        return data.completed;
       case 2:
-        return store.canceled();
+        return data.canceled;
       default:
-        return store.current();
+        return [...data.pending, ...data.confirmed, ...data.onDelivery];
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final store = OrdersLocalStore.instance;
 
     return PopScope(
       canPop: !widget.afterConfrim,
@@ -55,10 +54,26 @@ class _MyOrdersState extends State<MyOrders> {
         if (didPop) return;
         _goBack();
       },
-      child: ListenableBuilder(
-        listenable: store,
-        builder: (context, _) {
-          final orders = _ordersFor(activeIndex);
+      child: BlocBuilder<OrdersCubit, OrdersState>(
+        builder: (context, state) {
+          final data = state is OrdersGroupedLoaded
+              ? state.data
+              : OrdersData.empty();
+          final orders = _ordersFor(data, activeIndex);
+          if (state is OrdersLoading) {
+            return ProfileScaffold(
+              title: S.of(context).myOrders,
+              onBack: _goBack,
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (state is OrdersError) {
+            return ProfileScaffold(
+              title: S.of(context).myOrders,
+              onBack: _goBack,
+              body: Center(child: Text(state.error.message)),
+            );
+          }
           return ProfileScaffold(
             title: S.of(context).myOrders,
             subtitle: isAr

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:elkawther/core/errors/errors.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/features/health_services/models/measures.dart';
 import 'package:elkawther/features/health_services/models/pregnancy_calc_model.dart';
 import 'package:elkawther/features/health_services/models/vaccines.dart';
@@ -16,7 +16,9 @@ import 'package:elkawther/features/health_services/services/health_services.dart
 class HealthServiceCubit extends Cubit<HealthServcieState> {
   final HealthService _healthService;
 
-  HealthServiceCubit(this._healthService) : super(HealthServicesInitial());
+  HealthServiceCubit(this._healthService) : super(HealthServicesInitial()) {
+    monthlyPeriodCalc = null;
+  }
 
   WeightBody? weightBody;
   MonthlyPeriodCalc? monthlyPeriodCalc;
@@ -31,6 +33,8 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
 
   MonthResponse? currentPeriod;
   PregnancyResultModel? pregnancyResult;
+
+  List<Map<String, dynamic>> weightHistoryData = [];
 
   Future<void> fetchCurrentPeriodData() async {
     emit(HealthServicesLoading());
@@ -317,6 +321,22 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     }
   }
 
+  Future<void> fetchWeightHistory() async {
+    emit(HealthServicesLoading());
+    try {
+      weightHistoryData = await _healthService.getWeightHistory();
+      emit(HealthServicesWeightHistoryLoaded(weightHistoryData: weightHistoryData));
+    } on DioException catch (dioError) {
+      emit(
+        HealthServicesError(message: Errors(message: _getErrorMessage(dioError))),
+      );
+    } catch (error) {
+      emit(
+        HealthServicesError(message: Errors(message: _getErrorMessage(error))),
+      );
+    }
+  }
+
   Future<void> fetchVaccineStatusData({
     required Child child,
     required int vacId,
@@ -328,6 +348,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     try {
       final updatedVaccine = await _healthService.updateVaccinesData(
         vacID: vacId,
+        isCompleted: true,
       );
 
       final updatedVaccines =
@@ -363,7 +384,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
       emit(HealthServicesChildUpdated(child: updatedChild));
 
       if (context.mounted) {
-        ToastMessage().displayMessageToast(S.of(context).loaded, Colors.green);
+        AppSnackBar.success(S.of(context).loaded);
       }
     } on DioException catch (dioError) {
       updatingVaccineId = null;
@@ -500,6 +521,15 @@ class HealthServicesError extends HealthServcieState {
 
   @override
   List<Object> get props => [message];
+}
+
+class HealthServicesWeightHistoryLoaded extends HealthServcieState {
+  final List<Map<String, dynamic>> weightHistoryData;
+
+  const HealthServicesWeightHistoryLoaded({required this.weightHistoryData});
+
+  @override
+  List<Object> get props => [weightHistoryData];
 }
 
 class HealthServicesErrorPeriod extends HealthServcieState {

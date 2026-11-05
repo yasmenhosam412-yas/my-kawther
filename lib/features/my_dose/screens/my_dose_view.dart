@@ -1,19 +1,32 @@
-import 'package:elkawther/core/toasts/toasts.dart';
 import 'package:elkawther/core/services/local_notifications.dart';
-import 'package:elkawther/features/my_dose/data/dose_local_store.dart';
-import 'package:flutter/material.dart';
-import 'package:text_search/text_search.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/generated/l10n.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/features/health_services/screens/vaccines/noti/noti_methods.dart';
+import 'package:elkawther/features/my_dose/cubit/my_dose_cubit.dart';
+import 'package:elkawther/features/my_dose/cubit/my_dose_state.dart';
+import 'package:elkawther/features/my_dose/models/daily_medication_model.dart';
 import 'package:elkawther/features/my_dose/models/medication_model.dart';
 import 'package:elkawther/features/my_dose/models/time_model.dart';
-import 'package:elkawther/features/health_services/screens/vaccines/noti/noti_methods.dart';
 import 'package:elkawther/features/my_dose/widgets/empty_dose.dart';
 import 'package:elkawther/features/my_dose/widgets/medication_item.dart';
 import 'package:elkawther/features/my_dose/widgets/my_dose_search_bar.dart';
-import 'package:elkawther/features/my_dose/widgets/week_day_selector.dart';
 import 'package:elkawther/features/my_dose/widgets/success_dose_dialog.dart';
+import 'package:elkawther/features/my_dose/widgets/week_day_selector.dart';
+import 'package:elkawther/generated/l10n.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:text_search/text_search.dart';
+
+const _weekdays = [
+  'saturday',
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+];
 
 const _dayIndexMap = {
   DateTime.saturday: 0,
@@ -36,7 +49,6 @@ class _MyDoseViewState extends State<MyDoseView>
     with AutomaticKeepAliveClientMixin {
   int selectedDayIndex = 3;
   final TextEditingController searchController = TextEditingController();
-  final _store = DoseLocalStore.instance;
 
   @override
   bool get wantKeepAlive => true;
@@ -45,6 +57,9 @@ class _MyDoseViewState extends State<MyDoseView>
   void initState() {
     super.initState();
     selectedDayIndex = _dayIndexMap[DateTime.now().weekday] ?? 3;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<MedicationCubit>().fetchAllMedications();
+    });
   }
 
   @override
@@ -53,86 +68,92 @@ class _MyDoseViewState extends State<MyDoseView>
     super.dispose();
   }
 
-  String _getWeekdayByIndex(int index) {
-    const weekdays = [
-      'saturday',
-      'sunday',
-      'monday',
-      'tuesday',
-      'wednesday',
-      'thursday',
-      'friday',
-    ];
-    return weekdays[index];
-  }
+  String get _selectedDay => _weekdays[selectedDayIndex];
 
   Future<void> _handleMarkAsTaken(
     MedicationModel medication,
     TimeModel timeModel,
   ) async {
-    final todayIndex = _dayIndexMap[DateTime.now().weekday];
-
-    if (selectedDayIndex != todayIndex) {
-      if (mounted) {
-        ToastMessage().displayMessageToast(
-          S.of(context).onlyUpdateToday,
-          AppColors.primaryColor,
-        );
-      }
+    if (selectedDayIndex != _dayIndexMap[DateTime.now().weekday]) {
+      AppSnackBar.warning(S.of(context).onlyUpdateToday);
       return;
     }
 
     final confirmed = await SuccessDoseDialog.show(
       context,
       medicineName: medication.name,
-      timeLabel: timeModel.time.length >= 5
-          ? timeModel.time.substring(0, 5)
-          : timeModel.time,
+      timeLabel:
+          timeModel.time.length >= 5
+              ? timeModel.time.substring(0, 5)
+              : timeModel.time,
     );
+    if (!mounted || confirmed != true) return;
 
-    if (confirmed != true) return;
-    _store.markTaken(medicationId: medication.id, timeId: timeModel.id);
+    final time =
+        timeModel.time.length == 5 ? '${timeModel.time}:00' : timeModel.time;
+    final success = await context.read<MedicationCubit>().updateMedicationLog(
+      medicationId: medication.id,
+      time: time,
+      status: 'taken',
+      shownDate:
+          '${DateTime.now().year.toString().padLeft(4, '0')}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}',
+    );
+    if (!mounted || !success) return;
+
+    AppSnackBar.success(S.of(context).the_dose_has_been_taken);
   }
 
-  List<MedicationItem> _itemsFor(String query) {
-    final dayName = _getWeekdayByIndex(selectedDayIndex);
-    final medications = _store.forDay(dayName);
-    final items = medications
-        .map(
-          (medication) => MedicationItem(
-            medication: medication,
-            times: medication.times,
-            name: medication.name,
-            details: medication.notes ?? '',
-            quantity: medication.quantityPerTime.toString(),
-            image: medication.imagePath ?? '',
-            selectedDayIndex: selectedDayIndex,
-            onDeleteForToday: () async {
-              _store.removeFromDay(medication.id, dayName);
-              final allIds = await getNotificationIds(medication.name);
-              for (final time in medication.times) {
-                final notifId = safeNotificationId(
-                  time.id + time.time.hashCode + dayName.hashCode,
-                );
-                if (allIds.contains(notifId)) {
-                  await flutterLocalNotificationsPlugin.cancel(notifId);
-                  await removeNotificationId(medication.name, notifId);
-                }
-              }
-            },
-            onDeleteAll: () async {
-              _store.deleteAll(medication.id);
-              await cancelNotificationsForMedicine(medication.name);
-            },
-            onMarkAsTaken: (timeModel) =>
-                _handleMarkAsTaken(medication, timeModel),
-          ),
-        )
-        .toList();
+  List<MedicationItem> _itemsFor(
+    List<DailyMedicationModel> dailyMeds,
+    String query,
+  ) {
+    final day = dailyMeds.where(
+      (item) => item.day.toLowerCase() == _selectedDay,
+    );
+    final medications =
+        day.isEmpty ? <MedicationModel>[] : day.first.medications;
+    final items =
+        medications
+            .map(
+              (medication) => MedicationItem(
+                medication: medication,
+                times: medication.times,
+                name: medication.name,
+                details: medication.notes ?? '',
+                quantity: medication.quantityPerTime.toString(),
+                image: medication.imagePath ?? '',
+                selectedDayIndex: selectedDayIndex,
+                onDeleteForToday: () async {
+                  final removed = await context
+                      .read<MedicationCubit>()
+                      .removeMedicationFromDay(medication.id, _selectedDay);
+                  if (!removed) return;
+                  final allIds = await getNotificationIds(medication.name);
+                  for (final time in medication.times) {
+                    final id = safeNotificationId(
+                      time.id + time.time.hashCode + _selectedDay.hashCode,
+                    );
+                    if (allIds.contains(id)) {
+                      await flutterLocalNotificationsPlugin.cancel(id);
+                      await removeNotificationId(medication.name, id);
+                    }
+                  }
+                },
+                onDeleteAll: () async {
+                  final deleted = await context
+                      .read<MedicationCubit>()
+                      .deleteMedication(medication.id);
+                  if (deleted) {
+                    await cancelNotificationsForMedicine(medication.name);
+                  }
+                },
+                onMarkAsTaken: (time) => _handleMarkAsTaken(medication, time),
+              ),
+            )
+            .toList();
 
     final trimmed = query.trim();
     if (trimmed.isEmpty) return items;
-
     final search = TextSearch(
       items
           .map(
@@ -206,15 +227,48 @@ class _MyDoseViewState extends State<MyDoseView>
             ),
           ),
           Expanded(
-            child: ListenableBuilder(
-              listenable: _store,
-              builder: (context, _) {
-                final items = _itemsFor(searchController.text);
+            child: BlocBuilder<MedicationCubit, MedicationState>(
+              builder: (context, state) {
+                final cubit = context.read<MedicationCubit>();
+                if (state is MedicationLoading && cubit.dailyMeds.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (state is MedicationError && cubit.dailyMeds.isEmpty) {
+                  return _LoadError(
+                    message: state.msg.localizedMessage(context),
+                    onRetry: cubit.fetchAllMedications,
+                  );
+                }
+
+                final items = _itemsFor(cubit.dailyMeds, searchController.text);
                 if (items.isEmpty) return const EmptyDose();
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) => items[index],
+                return Stack(
+                  children: [
+                    ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) => items[index],
+                    ),
+                    if (state is MedicationLoading)
+                      const Align(
+                        alignment: Alignment.topCenter,
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                    if (state is MedicationError)
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: Material(
+                          color: Colors.red.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              state.msg.localizedMessage(context),
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
@@ -223,4 +277,28 @@ class _MyDoseViewState extends State<MyDoseView>
       ),
     );
   }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 44, color: Colors.grey),
+          const SizedBox(height: 12),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: onRetry, child: Text(S.of(context).retry)),
+        ],
+      ),
+    ),
+  );
 }

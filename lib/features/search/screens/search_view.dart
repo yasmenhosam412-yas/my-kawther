@@ -1,9 +1,10 @@
+import 'dart:async';
+
+import 'package:elkawther/core/errors/errors.dart';
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/generated/assets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
@@ -30,27 +31,20 @@ class _SearchViewState extends State<SearchView> {
 
   List<String> _recentSearches = [];
   String _lastQuery = "";
+  Timer? _searchDebounce;
+  bool _isWaitingForSearch = false;
 
   @override
   void initState() {
     super.initState();
     _loadRecentSearches();
     _searchController.addListener(_onSearchChanged);
-
-
-    _scrollController.addListener(() {
-      context.read<HomeCubit>();
-      if (_scrollController.position.pixels >=
-          _scrollController.position.maxScrollExtent - 100) {
-        if (_lastQuery.isNotEmpty) {
-        } else {
-        }
-      }
-    });
+    _scrollController.addListener(_onScroll);
   }
 
   Future<void> _loadRecentSearches() async {
     final searches = await SearchHistory.getSearches();
+    if (!mounted) return;
     setState(() {
       _recentSearches = searches;
     });
@@ -58,17 +52,51 @@ class _SearchViewState extends State<SearchView> {
 
   Future<void> _clearAllSearches() async {
     await SearchHistory.clear();
+    if (!mounted) return;
     setState(() => _recentSearches = []);
   }
 
   Future<void> _removeItem(String term) async {
     await SearchHistory.removeItem(term);
+    if (!mounted) return;
     setState(() => _recentSearches.remove(term));
   }
 
   void _onSearchChanged() {
     final query = _searchController.text.trim();
     _lastQuery = query;
+    _searchDebounce?.cancel();
+    if (query.isEmpty) {
+      _isWaitingForSearch = false;
+      context.read<HomeCubit>().searchProducts('');
+    } else {
+      _isWaitingForSearch = true;
+      _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+        if (!mounted || query != _searchController.text.trim()) return;
+        unawaited(context.read<HomeCubit>().searchProducts(query));
+        setState(() => _isWaitingForSearch = false);
+      });
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients ||
+        _lastQuery.isEmpty ||
+        _isWaitingForSearch ||
+        _scrollController.position.pixels <
+            _scrollController.position.maxScrollExtent - 100) {
+      return;
+    }
+
+    final state = context.read<HomeCubit>().state;
+    if (state.searchHasMore &&
+        !state.isSearching &&
+        !state.isLoadingSearchMore) {
+      unawaited(
+        context.read<HomeCubit>().searchProducts(_lastQuery, loadMore: true),
+      );
+    }
   }
 
   Widget _buildLoadingList() {
@@ -128,6 +156,8 @@ class _SearchViewState extends State<SearchView> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _scrollController.removeListener(_onScroll);
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -165,13 +195,7 @@ class _SearchViewState extends State<SearchView> {
               Expanded(
                 child: BlocBuilder<HomeCubit, HomeState>(
                   builder: (context, state) {
-                    context.read<HomeCubit>();
                     final searchText = _searchController.text.trim();
-
-                    if (state.status == HomeStatus.loading &&
-                        !state.isLoadingMore) {
-                      return _buildLoadingList();
-                    }
 
                     return SingleChildScrollView(
                       controller: _scrollController,
@@ -199,13 +223,53 @@ class _SearchViewState extends State<SearchView> {
                             ),
 
                           if (searchText.isNotEmpty)
-                            if (state.isSearching)
+                            if (_isWaitingForSearch || state.isSearching)
                               _buildLoadingList()
                             else if (state.searchError != null)
-                              Center(
-                                child: Text(
-                                  state.searchError!,
-                                  style: const TextStyle(color: Colors.red),
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      Errors(
+                                        message: state.searchError!,
+                                      ).localizedMessage(context),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed:
+                                          () => context
+                                              .read<HomeCubit>()
+                                              .searchProducts(searchText),
+                                      child: Text(S.of(context).retry),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else if (state.searchResults.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 36,
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.search_off_rounded,
+                                        size: 48,
+                                        color: AppColors.grey.withOpacity(0.7),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        S.of(context).noResultsFound,
+                                        textAlign: TextAlign.center,
+                                        style: AppTextStyles.noto16w400
+                                            .copyWith(color: AppColors.grey),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               )
                             else
@@ -227,15 +291,41 @@ class _SearchViewState extends State<SearchView> {
                                   }
                                   final product = state.searchResults[index];
                                   return ListTile(
-                                    leading: SvgPicture.asset(
-                                      Assets.iconsSearchIcon,
-                                      color: AppColors.darkColor,
+                                    leading: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child:
+                                          (product.imageUrl ?? product.image)
+                                                      ?.isNotEmpty ==
+                                                  true
+                                              ? Image.network(
+                                                product.imageUrl ??
+                                                    product.image!,
+                                                width: 48,
+                                                height: 48,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (_, __, ___) => const Icon(
+                                                      Icons
+                                                          .local_pharmacy_rounded,
+                                                      color:
+                                                          AppColors
+                                                              .primaryColor,
+                                                    ),
+                                              )
+                                              : const Icon(
+                                                Icons.local_pharmacy_rounded,
+                                                color: AppColors.primaryColor,
+                                              ),
                                     ),
-                                    title: Text(product.name ?? "Unnamed"),
+                                    title: Text(
+                                      product.name ?? "Unnamed",
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                     onTap: () => _handleProductTap(product),
                                     trailing: const Icon(
-                                      Icons.trending_up,
-                                      color: Colors.black,
+                                      Icons.chevron_right_rounded,
+                                      color: AppColors.grey,
                                     ),
                                   );
                                 },
@@ -247,8 +337,12 @@ class _SearchViewState extends State<SearchView> {
                                 },
                               ),
 
+                          if (state.isLoadingSearchMore)
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
                           const SizedBox(height: AppPadding.medium),
-
                         ],
                       ),
                     );

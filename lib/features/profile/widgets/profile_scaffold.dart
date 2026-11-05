@@ -46,7 +46,8 @@ class ProfileScaffold extends StatelessWidget {
                 children: [
                   if (showBack)
                     IconButton(
-                      onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+                      onPressed:
+                          onBack ?? () => Navigator.of(context).maybePop(),
                       icon: const Icon(
                         Icons.arrow_back_ios_new_rounded,
                         size: 18,
@@ -107,11 +108,13 @@ class ProfilePrimaryButton extends StatelessWidget {
     required this.title,
     required this.onPressed,
     this.color,
+    this.isLoading = false,
   });
 
   final String title;
   final VoidCallback? onPressed;
   final Color? color;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -129,14 +132,24 @@ class ProfilePrimaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: Text(
-          title,
-          style: AppTextStyles.noto14w400.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 16,
-          ),
-        ),
+        child:
+            isLoading
+                ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: Colors.white,
+                  ),
+                )
+                : Text(
+                  title,
+                  style: AppTextStyles.noto14w400.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
       ),
     );
   }

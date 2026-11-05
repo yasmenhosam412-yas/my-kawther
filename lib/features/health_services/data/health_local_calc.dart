@@ -70,22 +70,34 @@ class HealthLocalCalc {
     required int cycleLength,
     required int periodLength,
   }) {
-    final ovulation = startDay.add(Duration(days: cycleLength - 14));
+    final cycle = cycleLength.clamp(15, 60).toInt();
+    final periodDays = periodLength.clamp(1, cycle - 1).toInt();
+    final start = DateTime(startDay.year, startDay.month, startDay.day);
+    final ovulation = start.add(Duration(days: cycle - 14));
     final fertileStart = ovulation.subtract(const Duration(days: 5));
     final fertileEnd = ovulation.add(const Duration(days: 1));
     final days = <DayInfo>[];
-    for (var i = 0; i < cycleLength; i++) {
-      final date = startDay.add(Duration(days: i));
+    for (var i = 0; i < cycle; i++) {
+      final date = start.add(Duration(days: i));
       late final String phase;
       late final String chance;
-      if (i < periodLength) {
+      if (i < periodDays) {
         phase = 'حيض';
         chance = '1%';
-      } else if (!date.isBefore(fertileStart) && !date.isAfter(fertileEnd)) {
-        phase = 'خصوبة';
-        chance = date == ovulation ? '30%' : '25%';
+      } else if (_sameDay(date, ovulation)) {
+        phase = 'تبويض';
+        chance = '30%';
+      } else if (!date.isBefore(fertileStart) && date.isBefore(ovulation)) {
+        phase = 'خصوبة عالية';
+        chance = '25%';
+      } else if (!date.isAfter(fertileEnd) && date.isAfter(ovulation)) {
+        phase = 'خصوبة متوسطة';
+        chance = '25%';
+      } else if (date.isAfter(fertileEnd)) {
+        phase = 'ما بعد التبويض';
+        chance = '5%';
       } else {
-        phase = 'عادي';
+        phase = 'غير خصبة';
         chance = '5%';
       }
       days.add(
@@ -102,9 +114,9 @@ class HealthLocalCalc {
       data: PeriodData(
         period: PeriodInfo(
           userId: 0,
-          startDayOfCycle: startDay,
-          cycleLength: cycleLength,
-          periodLength: periodLength,
+          startDayOfCycle: start,
+          cycleLength: cycle,
+          periodLength: periodDays,
         ),
         ovulationDate: _date.format(ovulation),
         fertileStart: _date.format(fertileStart),
@@ -114,31 +126,99 @@ class HealthLocalCalc {
     );
   }
 
-  static calendar.MonthResponse monthResponse(MonthlyPeriodCalc calc) {
+  static calendar.MonthResponse? monthResponse(
+    MonthlyPeriodCalc calc, {
+    String languageCode = 'ar',
+  }) {
     final months = <String, List<calendar.DayInfo>>{};
     final today = DateTime.now();
     calendar.DayInfo? todayInfo;
     for (final day in calc.data.days) {
-      final parsed = DateTime.tryParse(day.date);
+      final parsed = parseDate(day.date);
       if (parsed == null) continue;
-      final key = DateFormat('MMMM yyyy', 'en').format(parsed);
+      final key = formatMonth(parsed, languageCode: languageCode);
       final info = calendar.DayInfo(
-        date: day.date,
+        date: _date.format(parsed),
         month: key,
         phase: day.phase,
         pregnancyChance: day.pregnancyChance,
-        isToday: _date.format(parsed) == _date.format(today),
+        isToday: _sameDay(parsed, today),
       );
       months.putIfAbsent(key, () => []).add(info);
       if (info.isToday) todayInfo = info;
     }
-    final fallback = months.values.first.first;
+    if (months.isEmpty) return null;
     return calendar.MonthResponse(
-      message: 'Success',
+      message: calc.message,
       months: months,
-      today: todayInfo ?? fallback,
+      today: todayInfo ?? months.values.first.first,
     );
   }
+
+  static DateTime? parseDate(String raw) {
+    final text = raw.trim();
+    final iso = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(text);
+    if (iso != null) {
+      return DateTime(
+        int.parse(iso.group(1)!),
+        int.parse(iso.group(2)!),
+        int.parse(iso.group(3)!),
+      );
+    }
+    final parts = text.split(RegExp(r'[\/\-.]'));
+    if (parts.length >= 3 && parts[0].length <= 2 && parts[2].length == 4) {
+      final day = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final year = int.tryParse(parts[2]);
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
+      }
+    }
+    return null;
+  }
+
+  static String formatDayMonth(DateTime date, {String languageCode = 'ar'}) {
+    final names = languageCode == 'ar' ? _arMonths : _enMonths;
+    return '${date.day} ${names[date.month - 1]}';
+  }
+
+  static String formatMonth(DateTime date, {String languageCode = 'ar'}) {
+    final names = languageCode == 'ar' ? _arMonths : _enMonths;
+    return '${names[date.month - 1]} ${date.year}';
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static const _arMonths = [
+    'يناير',
+    'فبراير',
+    'مارس',
+    'أبريل',
+    'مايو',
+    'يونيو',
+    'يوليو',
+    'أغسطس',
+    'سبتمبر',
+    'أكتوبر',
+    'نوفمبر',
+    'ديسمبر',
+  ];
+
+  static const _enMonths = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
   static PregnancyCalcModel pregnancy(DateTime lastPeriod) {
     final due = lastPeriod.add(const Duration(days: 280));
@@ -156,7 +236,7 @@ class HealthLocalCalc {
       babySize: _babySize(week),
       babyWeight: _babyWeight(week),
       babyLength: _babyLength(week),
-      imageStage: (week / 4).ceil().clamp(1, 10),
+      imageStage: week < 14 ? 1 : (week < 28 ? 2 : 3),
     );
     return PregnancyCalcModel(
       userId: 0,
@@ -212,11 +292,12 @@ class HealthLocalCalc {
   }
 
   static String _babySize(int week) {
-    if (week < 8) return 'حبة سمسم';
-    if (week < 12) return 'حبة ليمون';
-    if (week < 20) return 'موزة';
-    if (week < 28) return 'باذنجان';
-    return 'حجم ثمرة شمام';
+    if (week < 8) return 'بحجم بذرة سمسم';
+    if (week < 12) return 'بحجم برقوق';
+    if (week < 20) return 'بحجم موزة';
+    if (week < 28) return 'بحجم كوسة';
+    if (week < 36) return 'بحجم باذنجانة كبيرة';
+    return 'بحجم بطيخة';
   }
 
   static String _babyWeight(int week) {

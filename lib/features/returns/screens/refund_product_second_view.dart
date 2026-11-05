@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -81,9 +82,7 @@ class _RefundProductSecondViewState extends State<RefundProductSecondView> {
           if (state is OrdersRefunded) {
             Navigator.pushReplacementNamed(context, Routes.successRefund);
           } else if (state is OrdersError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(S.of(context).unexpectedError)),
-            );
+            AppSnackBar.error(S.of(context).unexpectedError);
           }
         },
         child: AbsorbPointer(
@@ -314,12 +313,8 @@ class _RefundProductSecondViewState extends State<RefundProductSecondView> {
                                         ?.address ??
                                     '';
                                 if (address.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        S.of(context).noAddressesFound,
-                                      ),
-                                    ),
+                                  AppSnackBar.error(
+                                    S.of(context).noAddressesFound,
                                   );
                                   return;
                                 }

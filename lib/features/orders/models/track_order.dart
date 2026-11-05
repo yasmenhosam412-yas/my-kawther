@@ -15,11 +15,13 @@ class TrackOrder {
 
   factory TrackOrder.fromJson(Map<String, dynamic> json) {
     return TrackOrder(
-      success: json['success'] ?? false,
-      orderId: json['order_id'] ?? 0,
-      status: json['status'] ?? '',
-      statusMeaning: json['status_meaning'] ?? '',
-      lastUpdate: json['last_update'] ?? '',
+      success: json['success'] == true || json['success'] == 1,
+      orderId: json['order_id'] is num
+          ? (json['order_id'] as num).toInt()
+          : int.tryParse('${json['order_id'] ?? json['id'] ?? 0}') ?? 0,
+      status: '${json['status'] ?? ''}',
+      statusMeaning: '${json['status_meaning'] ?? ''}',
+      lastUpdate: '${json['last_update'] ?? json['updated_at'] ?? ''}',
     );
   }
 

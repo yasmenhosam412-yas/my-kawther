@@ -1,12 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:elkawther/features/health_services/data/health_local_calc.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/features/health_services/models/measures.dart';
-import 'package:elkawther/features/health_services/widgets/pressure_bottom_sheet.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
 import 'package:elkawther/core/widgets/text_field_with_custom_label.dart';
+import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
+import 'package:elkawther/features/health_services/models/measures.dart';
+import 'package:elkawther/features/health_services/widgets/pressure_bottom_sheet.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 
 import 'package:elkawther/features/health_services/utils/pdf_helper.dart';
@@ -49,71 +51,61 @@ class _PressureCalcState extends State<PressureCalc> {
     super.dispose();
   }
 
-  void _submit(BuildContext context, {bool generatePdf = false}) {
+  Future<void> _submit(BuildContext context, {bool generatePdf = false}) async {
     final systolic = int.tryParse(_systolicController.text.trim());
     final diastolic = int.tryParse(_diastolicController.text.trim());
 
     if (_systolicController.text.length > 3 ||
         _diastolicController.text.length > 3) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(S.of(context).validateNumber)));
+      AppSnackBar.warning(S.of(context).validateNumber);
       return;
     }
 
     if (systolic == null || diastolic == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(S.of(context).requiredFeilds)));
+      AppSnackBar.warning(S.of(context).requiredFeilds);
       return;
     }
 
     final now = DateTime.now();
 
-    final measuredAt = DateFormat('yyyy-MM-dd HH:mm:ss', "en").format(now);
+    final measuredAt = DateFormat('yyyy-MM-dd HH:mm:ss', 'en').format(now);
 
     _pendingPdfRequest = generatePdf;
 
-    final evaluation = HealthLocalCalc.bloodPressureEvaluation(
-      systolic,
-      diastolic,
+    final cubit = context.read<HealthServiceCubit>();
+    await cubit.fetchBloodData(
+      systolic: systolic,
+      diastolic: diastolic,
+      conditionType: _getArabicCondition(_selectedCondition),
+      measuredAt: measuredAt,
+      context: context,
     );
-    final model = BloodMeasureModel(
-      message: 'Success',
-      data: BloodPressureData(
-        systolic: systolic,
-        diastolic: diastolic,
-        conditionType: _getArabicCondition(_selectedCondition),
-        measuredAt: now,
-        evaluation: evaluation,
-      ),
-    );
-    HealthLocalStore.instance.bloodPressure.insert(
-      0,
-      BloodPressureDataFetched(
-        systolic: systolic,
-        diastolic: diastolic,
-        conditionType: _getArabicCondition(_selectedCondition),
-        measuredAt: measuredAt,
-      ),
-    );
-    _evaluationResult = evaluation;
-    allResults = List.of(HealthLocalStore.instance.bloodPressure);
 
-    if (!_pendingPdfRequest) {
-      pressureBottomSheet(context, model, allResults);
+    final state = cubit.state;
+    if (state is HealthServicesBloodLoaded) {
+      final model = state.bloodMeasureModel;
+      _evaluationResult = model.data.evaluation;
+      allResults = List.of(state.bloodPressuraData);
+      if (!_pendingPdfRequest) {
+        if (!context.mounted) return;
+        pressureBottomSheet(context, model, allResults);
+        return;
+      }
+      _pendingPdfRequest = false;
+      PdfHelper.generateBloodPressurePdf(
+        lastSystolic: _systolicController.text,
+        lastDiastolic: _diastolicController.text,
+        lastCondition: PdfHelper.arabicCondition(
+          _getArabicCondition(_selectedCondition),
+        ),
+        lastEvaluation: _evaluationResult ?? '',
+        allResults: allResults,
+      );
       return;
     }
-    _pendingPdfRequest = false;
-    PdfHelper.generateBloodPressurePdf(
-      lastSystolic: _systolicController.text,
-      lastDiastolic: _diastolicController.text,
-      lastCondition: PdfHelper.arabicCondition(
-        _getArabicCondition(_selectedCondition),
-      ),
-      lastEvaluation: _evaluationResult ?? '',
-      allResults: allResults,
-    );
+    if (state is HealthServicesError) {
+      AppSnackBar.error(state.message.message);
+    }
   }
 
   @override

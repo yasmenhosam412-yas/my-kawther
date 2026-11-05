@@ -2,6 +2,7 @@ import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/utils/validators.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/widgets/auto_disappearing_dialog.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
 import 'package:elkawther/core/widgets/text_field_with_custom_label.dart';
@@ -64,11 +65,7 @@ class _SignUpState extends State<SignUp> {
           if (!context.mounted) return;
           Navigator.pushReplacementNamed(context, Routes.login);
         } else if (state is AuthErrorRegister) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              _buildErrorSnackBar(state.error.localizedMessage(context)),
-            );
+          AppSnackBar.error(state.error.localizedMessage(context));
         }
       },
       builder: (context, state) {
@@ -190,32 +187,6 @@ class _SignUpState extends State<SignUp> {
           ),
         );
       },
-    );
-  }
-
-  SnackBar _buildErrorSnackBar(String message) {
-    return SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: const Color(0xFFB42318),
-      elevation: 8,
-      duration: const Duration(seconds: 5),
-      dismissDirection: DismissDirection.horizontal,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      content: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

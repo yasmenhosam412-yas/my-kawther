@@ -34,7 +34,7 @@ class AddressCustomContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPharmacy = addressModel.type?.toLowerCase() == "pharmacy";
+    final isPharmacy = addressModel.isPickupFromPharmacy;
     final canDelete = !isPharmacy && (addressModel.id != null);
 
     final typeTextStyle = AppTextStyles.noto16w400.copyWith(
@@ -141,7 +141,7 @@ class AddressCustomContainer extends StatelessWidget {
           ),
           const SizedBox(height: AppPadding.small),
 
-          if (addressModel.isPharmacy == false)
+          if (!isPharmacy)
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,11 +205,13 @@ class AddressCustomContainer extends StatelessWidget {
   }
 
   getLocalizedType(String? type, BuildContext context) {
-    switch (type) {
+    switch (type?.toLowerCase()) {
       case "home":
         return S.of(context).homeAddress;
       case "work":
         return S.of(context).work;
+      case "pharmacy":
+        return S.of(context).takeFromPharamcy;
     }
   }
 }

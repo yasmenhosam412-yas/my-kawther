@@ -1,13 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:elkawther/generated/l10n.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/features/health_services/data/health_local_calc.dart';
 import 'package:elkawther/features/health_services/models/measures.dart';
 import 'package:elkawther/features/health_services/widgets/sugar_sheet.dart';
 import 'package:elkawther/core/widgets/custom_text_form_field.dart';
 import 'package:elkawther/core/widgets/text_field_with_custom_label.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
 import 'package:elkawther/features/health_services/utils/pdf_helper.dart';
 import 'package:elkawther/features/health_services/widgets/health_service_scaffold.dart';
 
@@ -129,52 +131,48 @@ class _BloodSugarCalcState extends State<BloodSugarCalc> {
     );
   }
 
-  void _submit(BuildContext context, {required bool generatePdf}) {
+  Future<void> _submit(BuildContext context, {required bool generatePdf}) async {
     final value = int.tryParse(_valueController.text.trim()) ?? 0;
 
     try {
       _pendingPdfRequest = generatePdf;
       final now = DateTime.now();
       final formattedDate = DateFormat("yyyy-MM-dd HH:mm:ss", "en").format(now);
-      final evaluation = HealthLocalCalc.sugarEvaluation(
-        value,
-        _selectedCondition,
-      );
-      final model = BloodSugarModel(
-        message: 'Success',
-        data: BloodSugarData(
-          value: value,
-          conditionType: _selectedCondition,
-          measuredAt: now,
-          evaluation: evaluation,
-        ),
-      );
-      HealthLocalStore.instance.bloodSugar.insert(
-        0,
-        BloodSugarDataFetched(
-          value: value,
-          conditionType: _selectedCondition,
-          measuredAt: formattedDate,
-        ),
-      );
-      _evaluationResult = evaluation;
-      allResults = List.of(HealthLocalStore.instance.bloodSugar);
 
-      if (!_pendingPdfRequest) {
-        sugarBottomSheet(context, model, allResults!);
+      final cubit = context.read<HealthServiceCubit>();
+      await cubit.fetchSugarData(
+        value: value,
+        conditionType: _selectedCondition,
+        measuredAt: formattedDate,
+        context: context,
+      );
+
+      final state = cubit.state;
+      if (state is HealthServicesSugarLoadedAll) {
+        final sugarModel = state.bloodSugarModel;
+        _evaluationResult = sugarModel.data.evaluation;
+        allResults = List.of(state.bloodPressureData);
+        if (!_pendingPdfRequest) {
+          if (!context.mounted) return;
+          sugarBottomSheet(context, sugarModel, allResults!);
+          return;
+        }
+        _pendingPdfRequest = false;
+        PdfHelper.generateBloodSugarPdf(
+          lastValue: _valueController.text,
+          lastCondition: PdfHelper.arabicCondition(_selectedCondition),
+          lastEvaluation: _evaluationResult ?? '',
+          allResults: allResults!,
+        );
         return;
       }
-      _pendingPdfRequest = false;
-      PdfHelper.generateBloodSugarPdf(
-        lastValue: _valueController.text,
-        lastCondition: PdfHelper.arabicCondition(_selectedCondition),
-        lastEvaluation: _evaluationResult ?? '',
-        allResults: allResults!,
-      );
+      if (state is HealthServicesError) {
+        if (!context.mounted) return;
+        AppSnackBar.error(state.message.message);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(S.of(context).pleaseEnterValidNumber)),
-      );
+      if (!context.mounted) return;
+      AppSnackBar.error(S.of(context).pleaseEnterValidNumber);
     }
   }
 }

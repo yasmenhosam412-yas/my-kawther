@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:elkawther/generated/l10n.dart';
@@ -15,12 +16,7 @@ class BeautyConsultation extends StatelessWidget {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لا يمكن فتح الرابط. حاول مرة أخرى لاحقاً.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error('لا يمكن فتح الرابط. حاول مرة أخرى لاحقاً.');
       }
     }
   }

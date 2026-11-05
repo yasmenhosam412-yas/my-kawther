@@ -4,6 +4,7 @@ import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/utils/responsive.dart';
 import 'package:elkawther/features/health_services/models/pregnancy_calc_model.dart';
+import 'package:elkawther/features/health_services/screens/pregnancy/pregnancy_calc.dart';
 import 'package:elkawther/features/health_services/widgets/health_service_scaffold.dart';
 import 'package:elkawther/features/health_services/widgets/pregnancy_weeks.dart';
 import 'package:flutter/material.dart';
@@ -19,17 +20,14 @@ class PregnancyResult extends StatelessWidget {
     return HealthServiceScaffold(
       title: S.of(context).pregnancyAndChildbirthCalculator,
       subtitle: '${result.currentWeek} ${S.of(context).week}',
-      bottom: result.currentWeek >= 40
-          ? HealthPrimaryButton(
-              title: S.of(context).newPregnaancy,
-              onPressed: () {
-                Navigator.pushReplacementNamed(
-                  context,
-                  Routes.pregnancyServices,
-                );
-              },
-            )
-          : null,
+      bottom: HealthPrimaryButton(
+        title: S.of(context).newPregnaancy,
+        onPressed: () async {
+          await SavedPregnancy.clear();
+          if (!context.mounted) return;
+          Navigator.pushReplacementNamed(context, Routes.pregnancyServices);
+        },
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [

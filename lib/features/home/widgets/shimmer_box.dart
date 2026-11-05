@@ -36,66 +36,157 @@ class HomeViewShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
-        spacing: 16,
         children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              ShimmerBox(height: 40, width: 40, radius: 20),
-              Row(
-                children: [
-                  ShimmerBox(height: 30, width: 30, radius: 8),
-                  SizedBox(width: 8),
-                  ShimmerBox(height: 30, width: 30, radius: 8),
-                  SizedBox(width: 8),
-                  ShimmerBox(height: 30, width: 30, radius: 8),
-                ],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFEAF5FC), Color(0xFFF5FAFD)],
               ),
-            ],
+            ),
+            child: const Column(
+              children: [
+                Row(
+                  children: [
+                    ShimmerBox(height: 42, width: 42, radius: 21),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(height: 12, width: 94, radius: 6),
+                          SizedBox(height: 7),
+                          ShimmerBox(height: 16, width: 148, radius: 8),
+                        ],
+                      ),
+                    ),
+                    ShimmerBox(height: 40, width: 40, radius: 14),
+                  ],
+                ),
+                SizedBox(height: 16),
+                ShimmerBox(height: 50, width: double.infinity, radius: 16),
+              ],
+            ),
           ),
-
-          const ShimmerBox(height: 50, width: double.infinity, radius: 12),
-
-          const ShimmerBox(height: 160, width: double.infinity, radius: 12),
-
-          _shimmerSectionList(titleWidth: 120, itemHeight: 80, itemCount: 5),
-
-          _shimmerSectionList(titleWidth: 150, itemHeight: 200, itemCount: 3),
-
-          _shimmerSectionList(titleWidth: 100, itemHeight: 80, itemCount: 6),
-
-          _shimmerSectionList(titleWidth: 140, itemHeight: 100, itemCount: 4),
-
-          _shimmerSectionList(titleWidth: 160, itemHeight: 200, itemCount: 3),
-
-          _shimmerSectionList(titleWidth: 140, itemHeight: 200, itemCount: 3),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+            child: Column(
+              children: [
+                const ShimmerBox(
+                  height: 164,
+                  width: double.infinity,
+                  radius: 22,
+                ),
+                const SizedBox(height: 22),
+                _shimmerSection(
+                  titleWidth: 92,
+                  itemHeight: 82,
+                  itemWidth: 82,
+                  itemCount: 5,
+                ),
+                const SizedBox(height: 22),
+                _shimmerSection(
+                  titleWidth: 132,
+                  itemHeight: 224,
+                  itemWidth: 158,
+                  itemCount: 3,
+                  productCards: true,
+                ),
+                const SizedBox(height: 22),
+                _shimmerSection(
+                  titleWidth: 74,
+                  itemHeight: 174,
+                  itemWidth: 154,
+                  itemCount: 3,
+                ),
+                const SizedBox(height: 22),
+                const ShimmerBox(
+                  height: 164,
+                  width: double.infinity,
+                  radius: 22,
+                ),
+                const SizedBox(height: 22),
+                _shimmerSection(
+                  titleWidth: 126,
+                  itemHeight: 154,
+                  itemWidth: 154,
+                  itemCount: 3,
+                ),
+                const SizedBox(height: 22),
+                _shimmerSection(
+                  titleWidth: 144,
+                  itemHeight: 224,
+                  itemWidth: 158,
+                  itemCount: 3,
+                  productCards: true,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _shimmerSectionList({
+  Widget _shimmerSection({
     required double titleWidth,
     required double itemHeight,
+    required double itemWidth,
     required int itemCount,
+    bool productCards = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShimmerBox(height: 20, width: titleWidth),
-        const SizedBox(height: 8),
+        Row(
+          children: [
+            ShimmerBox(height: 20, width: titleWidth, radius: 7),
+            const Spacer(),
+            const ShimmerBox(height: 14, width: 54, radius: 7),
+          ],
+        ),
+        const SizedBox(height: 10),
         SizedBox(
           height: itemHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemBuilder:
-                (_, __) => ShimmerBox(
+            itemBuilder: (_, __) {
+              if (!productCards) {
+                return ShimmerBox(
                   height: itemHeight,
-                  width: itemHeight * 0.8,
-                  radius: 12,
+                  width: itemWidth,
+                  radius: 18,
+                );
+              }
+              return SizedBox(
+                width: itemWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerBox(
+                      height: itemHeight - 63,
+                      width: itemWidth,
+                      radius: 18,
+                    ),
+                    const SizedBox(height: 9),
+                    const ShimmerBox(
+                      height: 12,
+                      width: double.infinity,
+                      radius: 6,
+                    ),
+                    const SizedBox(height: 7),
+                    ShimmerBox(height: 12, width: itemWidth * 0.62, radius: 6),
+                    const SizedBox(height: 8),
+                    ShimmerBox(height: 15, width: itemWidth * 0.48, radius: 7),
+                  ],
                 ),
+              );
+            },
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemCount: itemCount,
           ),

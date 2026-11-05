@@ -13,10 +13,10 @@ class TimeModel {
 
   factory TimeModel.fromJson(Map<String, dynamic> json) {
     return TimeModel(
-      id: json['id'],
-      medicationId: json['medication_id'],
-      time: json['time'],
-      status: json['status'] ?? 'pending',
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      medicationId: int.tryParse(json['medication_id'].toString()) ?? 0,
+      time: json['time']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'pending',
     );
   }
 

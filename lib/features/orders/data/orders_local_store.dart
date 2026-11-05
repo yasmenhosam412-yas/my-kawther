@@ -18,14 +18,15 @@ class OrdersLocalStore extends ChangeNotifier {
 
   List<Order> get all => List.unmodifiable(_orders);
 
-  List<Order> current() => _orders
-      .where(
-        (order) =>
-            order.status == 'pending' ||
-            order.status == 'confirmed' ||
-            order.status == 'on_delivery',
-      )
-      .toList();
+  List<Order> current() =>
+      _orders
+          .where(
+            (order) =>
+                order.status == 'pending' ||
+                order.status == 'confirmed' ||
+                order.status == 'on_delivery',
+          )
+          .toList();
 
   List<Order> past() =>
       _orders.where((order) => order.status == 'completed').toList();
@@ -55,11 +56,10 @@ class OrdersLocalStore extends ChangeNotifier {
     String? gift,
   }) {
     final orderId = _nextId++;
-    final products = items
-        .map((item) => _productFromDemo(item, qty: 1))
-        .toList();
+    final products =
+        items.map((item) => _productFromDemo(item, qty: 1)).toList();
     final now = DateTime.now();
-    final isPharmacy = address.isPharmacy == true;
+    final isPharmacy = address.isPickupFromPharmacy;
 
     _orders.insert(
       0,
@@ -81,21 +81,22 @@ class OrdersLocalStore extends ChangeNotifier {
       totalPrice: total,
       pointsEarned: 80,
       giftDescription: gift,
-      address: isPharmacy
-          ? Address(
-              city: '-',
-              street: '-',
-              building: '-',
-              apartment: '-',
-              landmark: '-',
-            )
-          : Address(
-              city: address.city ?? 'القاهرة',
-              street: address.address ?? '',
-              building: '',
-              apartment: address.apartment ?? '',
-              landmark: address.landmark ?? '',
-            ),
+      address:
+          isPharmacy
+              ? Address(
+                city: '-',
+                street: '-',
+                building: '-',
+                apartment: '-',
+                landmark: '-',
+              )
+              : Address(
+                city: address.city ?? 'القاهرة',
+                street: address.address ?? '',
+                building: '',
+                apartment: address.apartment ?? '',
+                landmark: address.landmark ?? '',
+              ),
       products: products,
       createdAt: now.toIso8601String(),
       lastUpdate: now.toIso8601String(),
@@ -199,7 +200,10 @@ class OrdersLocalStore extends ChangeNotifier {
       0,
       (sum, item) => sum + (double.tryParse(item.totalPrice) ?? 0),
     );
-    final itemsCount = products.fold<int>(0, (sum, item) => sum + item.quantity);
+    final itemsCount = products.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
 
     _orders.add(
       Order(
@@ -228,7 +232,9 @@ class OrdersLocalStore extends ChangeNotifier {
   }
 
   OrderProduct _product(int id, {int qty = 1}) {
-    final product = HomeDemoData.allProducts.firstWhere((item) => item.id == id);
+    final product = HomeDemoData.allProducts.firstWhere(
+      (item) => item.id == id,
+    );
     return _productFromDemo(product, qty: qty);
   }
 

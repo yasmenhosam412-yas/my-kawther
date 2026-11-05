@@ -67,10 +67,14 @@ class FavouriteProductData {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       mainImageUrl: json['image_url'] ?? '',
-      images: List<String>.from(json['images'] ?? []),
-      finalPrice: _parseToDouble(json['final_price']) ?? 0.0,
+      images:
+          (json['images'] as List?)?.map((item) => item.toString()).toList() ??
+          const [],
+      finalPrice: _parseToDouble(json['final_price'] ?? json['price']) ?? 0.0,
       discountType: json['discount_type']?.toString(),
-      categoryName: json['category']?['name'] ?? '',
+      categoryName: json['category'] is Map
+          ? (json['category']['name'] ?? '').toString()
+          : (json['category_name'] ?? '').toString(),
       rate: _parseToDouble(json['rate']) ?? 0.0,
       averageRating: _parseToDouble(json['average_rating']),
       ratingsCount:

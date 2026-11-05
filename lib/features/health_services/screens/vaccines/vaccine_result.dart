@@ -1,9 +1,11 @@
 import 'package:elkawther/core/routes/routes.dart';
-import 'package:elkawther/core/toasts/toasts.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/features/health_services/cubit/health_service_cubit.dart';
 import 'package:elkawther/features/health_services/data/health_local_calc.dart';
 import 'package:elkawther/features/health_services/widgets/health_service_scaffold.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/generated/l10n.dart';
@@ -29,15 +31,19 @@ class _VaccineResultState extends State<VaccineResult> {
     requestPermissionsOnStart();
   }
 
-  void _complete(int vaccineId) {
+  Future<void> _complete(int vaccineId) async {
     if (_child.vaccines.any((v) => v.id == vaccineId && v.isCompleted)) return;
-    setState(() {
-      _child = HealthLocalStore.instance.completeVaccine(
-        childId: _child.id,
-        vaccineId: vaccineId,
-        fallback: _child,
-      );
-    });
+    final cubit = context.read<HealthServiceCubit>();
+    await cubit.fetchVaccineStatusData(
+      child: _child,
+      vacId: vaccineId,
+      context: context,
+    );
+    if (!context.mounted) return;
+    final state = cubit.state;
+    if (state is HealthServicesChildUpdated) {
+      setState(() => _child = state.child);
+    }
   }
 
   @override
@@ -92,10 +98,7 @@ class _VaccineResultState extends State<VaccineResult> {
                 }
 
                 if (!context.mounted) return;
-                ToastMessage().displayMessageToast(
-                  S.of(context).doneSchedule,
-                  Colors.green,
-                );
+                AppSnackBar.success(S.of(context).doneSchedule);
 
                 if (context.mounted) {
                   Navigator.pushNamedAndRemoveUntil(

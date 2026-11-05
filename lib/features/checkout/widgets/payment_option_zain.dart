@@ -69,20 +69,29 @@ class PaymentMethodWidgetState extends State<PaymentMethodWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final selected = _selectedPayment;
     return ProfileFormCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _chip(S.of(context).cash, 'cash'),
-              _chip(S.of(context).zainCach, 'zaincash'),
-              _chip(S.of(context).qiCard, 'qicard'),
-            ],
+          ...[
+            (S.of(context).cash, 'cash', Icons.payments_rounded),
+            (
+              S.of(context).zainCach,
+              'zaincash',
+              Icons.account_balance_wallet_rounded,
+            ),
+            (S.of(context).qiCard, 'qicard', Icons.credit_card_rounded),
+          ].map(
+            (entry) => _paymentOption(
+              value: entry.$2,
+              label: entry.$1,
+              icon: entry.$3,
+              selected: selected == entry.$2,
+              onTap: () => _select(entry.$2),
+            ),
           ),
-          if (_selectedPayment == 'zaincash') ...[
+          if (selected == 'zaincash') ...[
             const SizedBox(height: 14),
             Text(
               '${S.of(context).zainCach}: ${number.text}',
@@ -98,7 +107,7 @@ class PaymentMethodWidgetState extends State<PaymentMethodWidget> {
               onTap: _pickImage,
               height: 140,
             ),
-          ] else if (_selectedPayment == 'qicard') ...[
+          ] else if (selected == 'qicard') ...[
             const SizedBox(height: 14),
             Text(
               '${S.of(context).credit_card}: ${credit.text}',
@@ -120,22 +129,77 @@ class PaymentMethodWidgetState extends State<PaymentMethodWidget> {
     );
   }
 
-  Widget _chip(String label, String value) {
-    final selected = _selectedPayment == value;
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: AppTextStyles.noto14w400.copyWith(
-          color: selected ? Colors.white : AppColors.grey,
-          fontWeight: FontWeight.w700,
+  Widget _paymentOption({
+    required String value,
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.light : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.primaryColor : AppColors.lightDarker,
+              width: selected ? 1.5 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryColor.withOpacity(0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color:
+                      selected
+                          ? AppColors.primaryColor.withOpacity(0.12)
+                          : AppColors.grey2,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: selected ? AppColors.primaryColor : AppColors.grey,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTextStyles.noto14w400.copyWith(
+                    color: selected ? AppColors.darkColor : AppColors.grey,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              if (selected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 22,
+                  color: AppColors.primaryColor,
+                )
+              else
+                const SizedBox(width: 22),
+            ],
+          ),
         ),
       ),
-      showCheckmark: false,
-      selected: selected,
-      selectedColor: AppColors.primaryColor,
-      backgroundColor: const Color(0xFFF5FAFD),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => _select(value),
     );
   }
 }

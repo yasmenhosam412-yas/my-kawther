@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:elkawther/features/cart/cubit/cart_cubit.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/generated/l10n.dart';
 
@@ -71,17 +72,12 @@ class _PaymentSummaryState extends State<PaymentSummary> {
                   child: BlocConsumer<CartCubit, CartState>(
                     listener: (context, state) {
                       if (state is CartError) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(state.message)));
+                        AppSnackBar.error(state.message);
                       } else if (state is CouponApplied) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(S.of(context).approved),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+                        AppSnackBar.success(S.of(context).approved);
                         code.clear();
+                      } else if (state is CouponRejected) {
+                        AppSnackBar.warning(state.message);
                       }
                     },
                     builder: (context, state) {
