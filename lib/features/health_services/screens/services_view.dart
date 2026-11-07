@@ -1,4 +1,8 @@
 import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/core/widgets/guest_user_dialog.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
+import 'package:elkawther/features/profile/data/app_settings.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/routes/routes.dart';
 import 'package:elkawther/features/health_services/widgets/health_creative_icons.dart';
@@ -60,17 +64,35 @@ class ServicesView extends StatelessWidget {
         subtitle: isAr ? 'تواصل عبر واتساب' : 'Chat on WhatsApp',
         kind: HealthServiceKind.pharmacist,
         color: const Color(0xFF16A34A),
-        whatsapp: '201012345678',
+        whatsapp: 'phone',
       ),
       _ServiceItem(
         title: S.of(context).beauty_consultation,
         subtitle: isAr ? 'استشارة تجميل' : 'Beauty consultation',
         kind: HealthServiceKind.beauty,
         color: const Color(0xFFDB2777),
-        whatsapp: '201098765432',
+        whatsapp: 'phone',
       ),
     ];
 
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, authState) {
+        if (authState is AuthVisitor) {
+          return const Scaffold(
+            backgroundColor: Color(0xFFF5FAFD),
+            body: LoginFirstView(),
+          );
+        }
+        return _servicesScaffold(context, isAr, services);
+      },
+    );
+  }
+
+  Widget _servicesScaffold(
+    BuildContext context,
+    bool isAr,
+    List<_ServiceItem> services,
+  ) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5FAFD),
       body: Column(
@@ -159,8 +181,9 @@ class _ServiceCard extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     if (item.whatsapp != null) {
-      final url = Uri.parse('https://wa.me/${item.whatsapp}');
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+      final link = AppSettings.instance.whatsAppUrl;
+      if (link == null) return;
+      await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
       return;
     }
     if (item.route != null) {

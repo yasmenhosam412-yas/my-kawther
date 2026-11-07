@@ -160,6 +160,10 @@ class HealthIssueProducts {
   });
 
   HealthIssueProducts.fromJson(Map<String, dynamic> json) {
+    final nested = json['product'];
+    if (nested is Map) {
+      json = Map<String, dynamic>.from(nested);
+    }
     id = int.tryParse(json['id']?.toString() ?? '0');
     price = parseToDouble(json['final_price']);
     quantity = int.tryParse(json['quantity']?.toString() ?? '0');

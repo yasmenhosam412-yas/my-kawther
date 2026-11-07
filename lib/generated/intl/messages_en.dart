@@ -881,6 +881,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "order_status_pending": MessageLookupByLibrary.simpleMessage(
       "Order placed",
     ),
+    "order_status_picking": MessageLookupByLibrary.simpleMessage(
+      "New - Order being picked",
+    ),
+    "order_status_packed": MessageLookupByLibrary.simpleMessage(
+      "New - Order packed",
+    ),
+    "order_status_confirmed": MessageLookupByLibrary.simpleMessage(
+      "Confirmed",
+    ),
+    "order_status_on_delivery": MessageLookupByLibrary.simpleMessage(
+      "New - Out for delivery",
+    ),
+    "order_status_compiled": MessageLookupByLibrary.simpleMessage(
+      "New - Order compiled",
+    ),
     "order_status_preparing": MessageLookupByLibrary.simpleMessage("Preparing"),
     "order_status_shipping": MessageLookupByLibrary.simpleMessage(
       "With courier",
@@ -1405,5 +1420,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "yousif": MessageLookupByLibrary.simpleMessage("yousif"),
     "youtube": MessageLookupByLibrary.simpleMessage("Youtube"),
     "zainCach": MessageLookupByLibrary.simpleMessage("Vodafone Cash"),
+    "added": MessageLookupByLibrary.simpleMessage("Added"),
+    "order_status_completed": MessageLookupByLibrary.simpleMessage("Completed"),
   };
 }

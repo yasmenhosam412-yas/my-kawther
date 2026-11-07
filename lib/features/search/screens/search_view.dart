@@ -15,8 +15,8 @@ import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/features/products/models/product_model.dart';
-import 'package:elkawther/core/widgets/custom_search_bar.dart';
 import 'package:elkawther/features/search/widgets/recent_search.dart';
+import 'package:intl/intl.dart';
 
 class SearchView extends StatefulWidget {
   const SearchView({super.key});
@@ -101,22 +101,18 @@ class _SearchViewState extends State<SearchView> {
 
   Widget _buildLoadingList() {
     return Skeletonizer(
-      child: ListView.builder(
+      child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: 6,
-        itemBuilder:
-            (_, __) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Container(
-                height: 60,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.grey.withOpacity(0.2),
-                ),
-              ),
-            ),
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, __) => Container(
+          height: 76,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
       ),
     );
   }
@@ -165,33 +161,95 @@ class _SearchViewState extends State<SearchView> {
 
   @override
   Widget build(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F7FB),
       resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppPadding.medium),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(8, 8, 16, 18),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF085A94),
+                  AppColors.primaryColor,
+                  Color(0xFF1A8FCF),
+                ],
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
                 children: [
-                  InkWell(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: CircleAvatar(
-                      backgroundColor: AppColors.gry,
-                      child: const Icon(Icons.arrow_back, color: Colors.black),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 18,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 10),
                   Expanded(
-                    child: CustomSearchBar(
-                      searchHint: S.of(context).searchFor,
-                      controller: _searchController,
+                    child: Container(
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.search_rounded,
+                            color: AppColors.primaryColor,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: S.of(context).searchFor,
+                                border: InputBorder.none,
+                                isCollapsed: true,
+                                hintStyle: AppTextStyles.noto14w400.copyWith(
+                                  color: AppColors.grey,
+                                ),
+                              ),
+                              style: AppTextStyles.noto14w400.copyWith(
+                                color: AppColors.darkColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (_searchController.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: _searchController.clear,
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: AppColors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: AppPadding.medium),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               Expanded(
                 child: BlocBuilder<HomeCubit, HomeState>(
                   builder: (context, state) {
@@ -215,62 +273,33 @@ class _SearchViewState extends State<SearchView> {
 
                           const SizedBox(height: AppPadding.medium),
                           if (_recentSearches.isEmpty && searchText.isEmpty)
-                            Center(
-                              child: Text(
-                                S.of(context).no_resent,
-                                style: AppTextStyles.noto16w400,
-                              ),
+                            _SearchStatus(
+                              icon: Icons.history_rounded,
+                              message: S.of(context).no_resent,
+                              detail: isAr
+                                  ? 'ابدأ البحث لتظهر هنا'
+                                  : 'Searches you make will show up here',
                             ),
 
                           if (searchText.isNotEmpty)
                             if (_isWaitingForSearch || state.isSearching)
                               _buildLoadingList()
                             else if (state.searchError != null)
-                              Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      Errors(
-                                        message: state.searchError!,
-                                      ).localizedMessage(context),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(color: Colors.red),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    TextButton(
-                                      onPressed:
-                                          () => context
-                                              .read<HomeCubit>()
-                                              .searchProducts(searchText),
-                                      child: Text(S.of(context).retry),
-                                    ),
-                                  ],
-                                ),
+                              _SearchStatus(
+                                icon: Icons.error_outline_rounded,
+                                iconColor: const Color(0xFFEF4444),
+                                message: Errors(
+                                  message: state.searchError!,
+                                ).localizedMessage(context),
+                                action: S.of(context).retry,
+                                onAction: () => context
+                                    .read<HomeCubit>()
+                                    .searchProducts(searchText),
                               )
                             else if (state.searchResults.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 36,
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.search_off_rounded,
-                                        size: 48,
-                                        color: AppColors.grey.withOpacity(0.7),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        S.of(context).noResultsFound,
-                                        textAlign: TextAlign.center,
-                                        style: AppTextStyles.noto16w400
-                                            .copyWith(color: AppColors.grey),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              _SearchStatus(
+                                icon: Icons.search_off_rounded,
+                                message: S.of(context).noResultsFound,
                               )
                             else
                               ListView.separated(
@@ -279,60 +308,25 @@ class _SearchViewState extends State<SearchView> {
                                 itemCount:
                                     state.searchResults.length +
                                     (state.isLoadingSearchMore ? 1 : 0),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
                                 itemBuilder: (context, index) {
                                   if (index == state.searchResults.length &&
                                       state.isLoadingSearchMore) {
                                     return const Padding(
                                       padding: EdgeInsets.all(16),
                                       child: Center(
-                                        child: CircularProgressIndicator(),
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.primaryColor,
+                                        ),
                                       ),
                                     );
                                   }
-                                  final product = state.searchResults[index];
-                                  return ListTile(
-                                    leading: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child:
-                                          (product.imageUrl ?? product.image)
-                                                      ?.isNotEmpty ==
-                                                  true
-                                              ? Image.network(
-                                                product.imageUrl ??
-                                                    product.image!,
-                                                width: 48,
-                                                height: 48,
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (_, __, ___) => const Icon(
-                                                      Icons
-                                                          .local_pharmacy_rounded,
-                                                      color:
-                                                          AppColors
-                                                              .primaryColor,
-                                                    ),
-                                              )
-                                              : const Icon(
-                                                Icons.local_pharmacy_rounded,
-                                                color: AppColors.primaryColor,
-                                              ),
+                                  return _SearchProductCard(
+                                    product: state.searchResults[index],
+                                    onTap: () => _handleProductTap(
+                                      state.searchResults[index],
                                     ),
-                                    title: Text(
-                                      product.name ?? "Unnamed",
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    onTap: () => _handleProductTap(product),
-                                    trailing: const Icon(
-                                      Icons.chevron_right_rounded,
-                                      color: AppColors.grey,
-                                    ),
-                                  );
-                                },
-                                separatorBuilder: (context, index) {
-                                  return const Divider(
-                                    color: Color(0xffD2D2D2),
-                                    thickness: 0.5,
                                   );
                                 },
                               ),
@@ -349,8 +343,178 @@ class _SearchViewState extends State<SearchView> {
                   },
                 ),
               ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchProductCard extends StatelessWidget {
+  const _SearchProductCard({required this.product, required this.onTap});
+
+  final ProductModel product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = product.imageUrl ?? product.image;
+    final price = product.price ?? 0;
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE6EEF5)),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: image != null && image.isNotEmpty
+                    ? Image.network(
+                        image,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const _SearchImageFallback(),
+                      )
+                    : const _SearchImageFallback(),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkColor,
+                      ),
+                    ),
+                    if (price > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${NumberFormat('#,##0').format(price)} ${S.of(context).currency}',
+                        style: AppTextStyles.noto14w400.copyWith(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.grey.withOpacity(0.7),
+                textDirection: Directionality.of(context),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchImageFallback extends StatelessWidget {
+  const _SearchImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 56,
+      height: 56,
+      color: AppColors.light,
+      child: const Icon(
+        Icons.local_pharmacy_rounded,
+        color: AppColors.primaryColor,
+      ),
+    );
+  }
+}
+
+class _SearchStatus extends StatelessWidget {
+  const _SearchStatus({
+    required this.icon,
+    required this.message,
+    this.detail,
+    this.iconColor,
+    this.action,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String message;
+  final String? detail;
+  final Color? iconColor;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = iconColor ?? AppColors.primaryColor;
+    return Padding(
+      padding: const EdgeInsets.only(top: 28),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.noto16w400.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.darkColor,
+                fontSize: 15,
+              ),
+            ),
+            if (detail != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                detail!,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.noto14w400.copyWith(
+                  color: AppColors.grey,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+            if (action != null && onAction != null)
+              TextButton(
+                onPressed: onAction,
+                child: Text(
+                  action!,
+                  style: AppTextStyles.noto14w400.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

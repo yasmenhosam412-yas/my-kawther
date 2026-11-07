@@ -13,10 +13,11 @@ class TrackOrderBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isShipped =
-        track.status == 'shipped' ||
-        track.status == 'on_delivery' ||
-        track.status == 'completed';
+    // Determine if order is shipped based on status
+    final isShipped = track.status == 'on_delivery' ||
+        track.status == 'compiled' ||
+        track.status == 'completed' ||
+        track.status == 'canceled';
     final dateLabel = _formatDate(context, track.lastUpdate);
 
     return Container(

@@ -1,10 +1,10 @@
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_state.dart';
+import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
-import 'package:elkawther/features/home/widgets/home_problems_row.dart';
+import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,12 +17,22 @@ class HomeProblemsBrowseView extends StatelessWidget {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5FAFD),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
+      backgroundColor: const Color(0xFFF3F7FB),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(8, 8, 20, 18),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF067A62), AppColors.teal, Color(0xFF14C4A0)],
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+            ),
+            child: SafeArea(
+              bottom: false,
               child: Row(
                 children: [
                   IconButton(
@@ -30,7 +40,7 @@ class HomeProblemsBrowseView extends StatelessWidget {
                     icon: const Icon(
                       Icons.arrow_back_ios_new_rounded,
                       size: 18,
-                      color: AppColors.darkColor,
+                      color: Colors.white,
                     ),
                   ),
                   Expanded(
@@ -40,18 +50,19 @@ class HomeProblemsBrowseView extends StatelessWidget {
                         Text(
                           S.of(context).shopByProblem,
                           style: AppTextStyles.noto16w400.copyWith(
-                            fontSize: 20,
+                            fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.darkColor,
+                            color: Colors.white,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           isAr
                               ? 'اختر العرض ثم شاهد المنتجات المناسبة'
                               : 'Pick a concern and see matching products',
                           style: AppTextStyles.noto14w400.copyWith(
-                            fontSize: 12,
-                            color: AppColors.grey,
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.82),
                           ),
                         ),
                       ],
@@ -60,60 +71,169 @@ class HomeProblemsBrowseView extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: BlocBuilder<HomeCubit, HomeState>(
-                builder: (context, state) {
-                  final issues =
-                      state.healthIssues?.data
-                          ?.where((issue) => issue.id != null)
-                          .toList() ??
-                      const [];
-                  if (issues.isEmpty) {
-                    if (state.status == HomeStatus.loading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return Center(child: Text(S.of(context).no_products_found));
+          ),
+          Expanded(
+            child: BlocBuilder<HomeCubit, HomeState>(
+              builder: (context, state) {
+                final issues =
+                    state.healthIssues?.data
+                        ?.where((issue) => issue.id != null)
+                        .toList() ??
+                    const [];
+                if (issues.isEmpty) {
+                  if (state.status == HomeStatus.loading) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: AppColors.teal),
+                    );
                   }
-                  final problems =
-                      issues
-                          .map(
-                            (issue) => HomeDemoProblem(
-                              id: issue.id!,
-                              nameAr: issue.name ?? '',
-                              nameEn: issue.name ?? '',
-                              subtitleAr: '',
-                              subtitleEn: '',
-                              icon: Icons.health_and_safety_rounded,
-                              color: const Color(0xFF06A786),
-                              productIds: const [],
-                              imageUrl: issue.imageUrl ?? issue.image ?? '',
-                            ),
-                          )
-                          .toList();
-                  return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    itemCount: problems.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 560,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          mainAxisExtent: 220,
-                        ),
-                    itemBuilder: (context, index) {
-                      final problem = problems[index];
-                      return HomeProblemCard(
-                        problem: problem,
-                        expanded: true,
-                        onTap:
-                            () => HomeNavigation.openProblem(context, problem),
-                      );
-                    },
+                  return _IssuesMessage(
+                    message: S.of(context).no_products_found,
                   );
-                },
-              ),
+                }
+
+                final problems = issues
+                    .map(
+                      (issue) => HomeDemoProblem(
+                        id: issue.id!,
+                        nameAr: issue.name ?? '',
+                        nameEn: issue.name ?? '',
+                        subtitleAr: '',
+                        subtitleEn: '',
+                        icon: Icons.health_and_safety_rounded,
+                        color: AppColors.teal,
+                        productIds: const [],
+                        imageUrl: issue.imageUrl ?? issue.image ?? '',
+                      ),
+                    )
+                    .toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                      child: Text(
+                        isAr
+                            ? '${problems.length} حالة صحية'
+                            : '${problems.length} health concerns',
+                        style: AppTextStyles.noto14w400.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.grey,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        itemCount: problems.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.78,
+                            ),
+                        itemBuilder: (context, index) {
+                          final problem = problems[index];
+                          return _IssueTile(
+                            problem: problem,
+                            onTap: () =>
+                                HomeNavigation.openProblem(context, problem),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IssueTile extends StatelessWidget {
+  const _IssueTile({required this.problem, required this.onTap});
+
+  final HomeDemoProblem problem;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE6EEF5)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.teal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: problem.imageUrl.trim().isEmpty
+                        ? const Icon(
+                            Icons.health_and_safety_rounded,
+                            color: AppColors.teal,
+                            size: 28,
+                          )
+                        : HomeCatalogImage(
+                            assetPath: problem.imageUrl,
+                            fit: BoxFit.contain,
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  problem.name(context),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.noto14w400.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                    color: AppColors.darkColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IssuesMessage extends StatelessWidget {
+  const _IssuesMessage({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
         ),
       ),
     );

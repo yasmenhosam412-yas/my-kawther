@@ -1,14 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:typed_data';
+
+import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
 import 'package:elkawther/features/orders/models/all_returns.dart';
-import 'package:elkawther/features/orders/widgets/order_info_card.dart';
-import 'package:elkawther/features/returns/screens/refund_details_section.dart';
+import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
+import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
-import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/core/utils/helper_functions.dart';
-import 'package:elkawther/core/utils/helpers.dart' show OrderState;
 
 class RefundProductDetailsView extends StatefulWidget {
   const RefundProductDetailsView({super.key});
@@ -19,170 +19,194 @@ class RefundProductDetailsView extends StatefulWidget {
 }
 
 class _RefundProductDetailsViewState extends State<RefundProductDetailsView> {
-  late final int orderId;
-  bool _isInitialized = false;
+  late final int returnId;
+  var _ready = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_isInitialized) {
-      orderId = ModalRoute.of(context)!.settings.arguments as int;
-      context.read<OrdersCubit>().getOrderDetailsRefunded(orderId);
-      _isInitialized = true;
+    if (_ready) return;
+    returnId = ModalRoute.of(context)!.settings.arguments as int;
+    context.read<OrdersCubit>().getOrderDetailsRefunded(returnId);
+    _ready = true;
+  }
+
+  Future<void> _cancel(RefundedItem item) async {
+    try {
+      final message = await context.read<OrdersCubit>().cancelReturn(
+        item.id,
+        refreshList: false,
+      );
+      if (!mounted) return;
+      if (message.isNotEmpty) AppSnackBar.success(message);
+      await context.read<OrdersCubit>().getOrderDetailsRefunded(item.id);
+    } catch (error) {
+      if (mounted) AppSnackBar.error(error.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          S.of(context).order_details,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: BlocBuilder<OrdersCubit, OrdersState>(
-        builder: (context, state) {
-          if (state is OrdersLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is OrderDetailsRefnudedLoaded) {
-            final order = state.refundedItem;
-            return _buildOrderDetailsView(order);
-          } else if (state is OrdersError) {
-            return Center(child: Text(state.error.localizedMessage(context)));
-          } else {
-            return const SizedBox();
-          }
-        },
-      ),
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    return BlocBuilder<OrdersCubit, OrdersState>(
+      builder: (context, state) {
+        final item = state is OrderDetailsRefnudedLoaded ? state.refundedItem : null;
+        return ProfileScaffold(
+          title: S.of(context).returns,
+          subtitle: item == null ? null : '#${item.orderId}',
+          bottom: item != null && (item.status ?? '').toLowerCase() == 'pending'
+              ? ProfilePrimaryButton(
+                  title: S.of(context).cancel,
+                  color: const Color(0xFFDC2626),
+                  onPressed: () => _cancel(item),
+                )
+              : null,
+          body: switch (state) {
+            OrdersLoading() => const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryColor),
+            ),
+            OrdersError(:final error) => Center(
+              child: Text(error.localizedMessage(context)),
+            ),
+            OrderDetailsRefnudedLoaded(:final refundedItem) =>
+              _details(context, refundedItem, isAr),
+            _ => const SizedBox(),
+          },
+        );
+      },
     );
   }
 
-  Widget _buildOrderDetailsView(RefundedItem order) {
-    final products = order.order;
-
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.all(AppPadding.medium),
-          sliver: SliverList.list(
+  Widget _details(BuildContext context, RefundedItem item, bool isAr) {
+    final rows = [
+      _Row(S.of(context).return_reason, item.reason),
+      if ((item.note ?? '').isNotEmpty) _Row(S.of(context).note, item.note!),
+      _Row(S.of(context).refund_amount, item.refundAmount ?? ''),
+      _Row(
+        isAr ? 'طريقة الاسترداد' : 'Refund method',
+        item.refundMethod ?? '',
+      ),
+      _Row(S.of(context).address, item.address ?? ''),
+      _Row(isAr ? 'الحالة' : 'Status', item.status ?? ''),
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
             children: [
-              OrderInfoHeader(
-                orderNumber: "#${order.orderId}",
-                date: HelperFunctions.getTime(
-                  DateTime.parse("${products.createdAt}"),
-                  context,
+              for (final row in rows) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        row.label,
+                        style: AppTextStyles.noto14w400.copyWith(
+                          color: AppColors.grey,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        row.value,
+                        textAlign: TextAlign.end,
+                        style: AppTextStyles.noto14w400.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.darkColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                shipmentNumber: order.status ?? "",
-                orderState: _mapStatusToEnum(order.status),
-                orderMeaning: getOrderMeaning(order.status ?? ""),
-              ),
-              const SizedBox(height: AppPadding.medium),
-              const Divider(),
-              const SizedBox(height: AppPadding.medium),
-              // Text(
-              //   "$order ${S.of(context).items}",
-              //   style: Theme.of(
-              //     context,
-              //   ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-              // ),
+                if (row != rows.last) const Divider(height: 22),
+              ],
             ],
           ),
         ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              if (index.isEven) {
-                final imageIndex = index ~/ 2;
-                return Padding(
-                  padding: const EdgeInsets.all(AppPadding.medium),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child:
-                        (order.images.isNotEmpty)
-                            ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: CachedNetworkImage(
-                                imageUrl: order.images[imageIndex]['full_url'],
-                                width: double.infinity,
-                                height: 150,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                            : Center(child: Text(S.of(context).no_images)),
-                  ),
-                );
-              } else {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppPadding.medium),
-                  child: Divider(),
-                );
-              }
-            },
-            childCount: order.images.isEmpty ? 1 : order.images.length * 2 - 1,
+        if (item.images.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            isAr ? 'صور المرتجع' : 'Return images',
+            style: AppTextStyles.noto16w400.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.darkColor,
+            ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.all(AppPadding.medium),
-          sliver: SliverList.list(
-            children: [
-              RefundDetailsSection(
-                address:
-                    (order.address!.startsWith("https") == false)
-                        ? order.address ?? ""
-                        : S.of(context).takeFromPharamcy,
-                totalPrice: order.refundAmount ?? "",
-                // deliveryFee: order.order.deliveryFee,
-                paymentMethod: order.refundMethod ?? "cash",
-                points: order.order.pointsEarned.toString(),
-                gift: order.order.giftDescription ?? S.of(context).nogitf,
-                notes: order.note ?? "",
-                reson: order.reason,
-              ),
-            ],
+          const SizedBox(height: 10),
+          ...item.images.map(
+            (image) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ReturnImage(image: image),
+            ),
           ),
-        ),
-        // SliverToBoxAdapter(
-        //   child: Padding(
-        //     padding: const EdgeInsets.all(AppPadding.medium),
-        //     child: _buildActionButtons(order),
-        //   ),
-        // ),
+        ],
       ],
     );
   }
+}
 
-  OrderState _mapStatusToEnum(String? status) {
-    if (status == null) {
-      return OrderState.active;
-    }
+class _Row {
+  const _Row(this.label, this.value);
 
-    final cleaned = status.trim().toLowerCase();
+  final String label;
+  final String value;
+}
 
-    switch (cleaned) {
-      case 'pending':
-        return OrderState.active;
-      case 'accepted':
-        return OrderState.delivered;
-      case 'rejected':
-        return OrderState.canceled;
-      default:
-        return OrderState.active;
-    }
+class _ReturnImage extends StatefulWidget {
+  const _ReturnImage({required this.image});
+
+  final String image;
+
+  @override
+  State<_ReturnImage> createState() => _ReturnImageState();
+}
+
+class _ReturnImageState extends State<_ReturnImage> {
+  late final Future<List<int>?> _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _bytes = context.read<OrdersCubit>().ordersServices.fetchReturnImage(
+      widget.image,
+    );
   }
 
-  getOrderMeaning(String status) {
-    switch (status) {
-      case 'pending':
-        return S.of(context).orderIsNowPending;
-      case 'accepted':
-        return S.of(context).orderIsNowConfirmed;
-      case 'rejected':
-        return S.of(context).orderRejected;
-      default:
-        return OrderState.active;
-    }
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: FutureBuilder<List<int>?>(
+        future: _bytes,
+        builder: (context, snapshot) {
+          final data = snapshot.data;
+          if (data == null || data.isEmpty) {
+            return Container(
+              height: 160,
+              color: AppColors.light,
+              alignment: Alignment.center,
+              child: snapshot.connectionState == ConnectionState.done
+                  ? const Icon(Icons.image_not_supported_outlined)
+                  : const CircularProgressIndicator(
+                      color: AppColors.primaryColor,
+                    ),
+            );
+          }
+          return Image.memory(
+            Uint8List.fromList(data),
+            height: 180,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          );
+        },
+      ),
+    );
   }
 }

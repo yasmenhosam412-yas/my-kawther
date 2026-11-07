@@ -43,7 +43,7 @@ class HealthIssueProductsCubit extends Cubit<HealthIssueProductsState> {
     try {
       final model = await _healthIssueProductsService
           .getHealthProductsNewArrival(healthId);
-      healthIssueProducts = model.dataHealth ?? [];
+      healthIssueProducts = model.data?.products ?? model.dataHealth ?? [];
       emit(HealthIssueProductsLoaded(healthIssueProducts: healthIssueProducts));
     } catch (_) {
       if (!context.mounted) return;
@@ -59,7 +59,7 @@ class HealthIssueProductsCubit extends Cubit<HealthIssueProductsState> {
     try {
       final model = await _healthIssueProductsService
           .getHealthProductsBestSelling(healthId);
-      healthIssueProducts = model.dataHealth ?? [];
+      healthIssueProducts = model.data?.products ?? model.dataHealth ?? [];
       emit(HealthIssueProductsLoaded(healthIssueProducts: healthIssueProducts));
     } catch (_) {
       if (!context.mounted) return;

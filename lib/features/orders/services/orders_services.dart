@@ -54,7 +54,7 @@ class OrdersServices {
       ),
     );
 
-    return RefundedItem.fromJson(response.data);
+    return RefundedItem.fromJson(_resource(response.data));
   }
 
   Future<TrackOrder> getOrderTracking(int id) async {
@@ -132,11 +132,19 @@ class OrdersServices {
 
   Future<String> cancelOrder(int id) async {
     final token = await storageHelper.safeRead('token');
-    final response = await _dio.post(
-      '/api/user/orders/$id/cancel',
-      options: _authOptions(token),
-    );
-    return _message(response.data);
+    try {
+      final response = await _dio.post(
+        '/api/user/orders/$id/cancel',
+        options: _authOptions(token),
+      );
+      final message = _message(response.data);
+      if (_isFailureMessage(message)) {
+        throw Exception(_failureText(message));
+      }
+      return message;
+    } on DioException catch (e) {
+      throw Exception(_failureText(_dioErrorMessage(e)));
+    }
   }
 
   Future<Map<String, dynamic>> payOrder(int id) async {
@@ -175,8 +183,35 @@ class OrdersServices {
   String paymentReceiptPath(int orderId) =>
       '/api/user/files/payment-receipt/$orderId';
 
-  String returnImagePath(int imageId) =>
-      '/api/user/files/return-image/$imageId';
+  String returnImagePath(String image) {
+    var name = image.trim();
+    if (name.contains('%')) {
+      name = Uri.decodeFull(name);
+    }
+    final slash = name.lastIndexOf('/');
+    if (slash >= 0 && slash < name.length - 1) {
+      name = name.substring(slash + 1);
+    }
+    return '/api/user/files/return-image/${Uri.encodeComponent(name)}';
+  }
+
+  Future<List<int>?> fetchReturnImage(String image) async {
+    final token = await storageHelper.safeRead('token');
+    final response = await _dio.get(
+      returnImagePath(image),
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'image/*',
+        },
+      ),
+    );
+    final data = response.data;
+    if (data is List<int>) return data;
+    if (data is List) return data.cast<int>();
+    return null;
+  }
 
   Options _authOptions(String? token) {
     return Options(
@@ -202,6 +237,45 @@ class OrdersServices {
   String _message(dynamic data) {
     if (data is Map && data['message'] != null) return data['message'].toString();
     return data?.toString() ?? '';
+  }
+
+  bool _isFailureMessage(String message) {
+    return RegExp(r'^error\s*:', caseSensitive: false).hasMatch(message.trim());
+  }
+
+  String _failureText(String message) {
+    final text = message.trim();
+    final stripped = text.replaceFirst(
+      RegExp(r'^error\s*:\s*', caseSensitive: false),
+      '',
+    ).trim();
+    return stripped.isEmpty ? text : stripped;
+  }
+
+  String _dioErrorMessage(DioException error) {
+    final data = error.response?.data;
+    if (data is Map) {
+      final message = data['message'] ?? data['error'];
+      if (message != null && message.toString().trim().isNotEmpty) {
+        return message.toString();
+      }
+      final errors = data['errors'];
+      if (errors is Map) {
+        final parts = <String>[];
+        for (final value in errors.values) {
+          if (value is List) {
+            parts.addAll(value.map((item) => item.toString()));
+          } else if (value != null) {
+            parts.add(value.toString());
+          }
+        }
+        if (parts.isNotEmpty) return parts.join('\n');
+      }
+    }
+    if (data is String && data.trim().isNotEmpty) return data;
+    final fallback = error.message?.trim();
+    if (fallback != null && fallback.isNotEmpty) return fallback;
+    return 'Unexpected error';
   }
 
   List<dynamic> _asList(dynamic data) {

@@ -15,6 +15,7 @@ import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/notifications/cubit/notification_cubit.dart';
 import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
+import 'package:elkawther/features/profile/data/app_settings.dart';
 import 'package:elkawther/features/my_dose/cubit/my_dose_cubit.dart';
 import 'package:elkawther/features/profile/cubit/reviews_cubit.dart';
 import 'package:elkawther/firebase_options.dart';
@@ -71,6 +72,8 @@ Future<void> main() async {
   final localeProvider = LocaleProvider();
   await localeProvider.loadLocale();
   await S.load(localeProvider.locale);
+  final appSettings = AppSettings.instance;
+  await appSettings.load();
 
   runApp(
     MultiBlocProvider(
@@ -87,7 +90,10 @@ Future<void> main() async {
       ],
       child: ChangeNotifierProvider.value(
         value: localeProvider,
-        child: const MyApp(),
+        child: ChangeNotifierProvider.value(
+          value: appSettings,
+          child: const MyApp(),
+        ),
       ),
     ),
   );
@@ -246,7 +252,7 @@ class _MyAppState extends State<MyApp> {
             debugShowCheckedModeBanner: false,
             initialRoute: Routes.splash,
             onGenerateRoute: RouteGenerator.generateRoute,
-            title: 'El Kawther',
+            title: 'Pharmacy App',
             theme: ThemeData(
               fontFamily: 'NotoSansArabic',
               colorScheme: ColorScheme.fromSeed(

@@ -20,12 +20,18 @@ class OrderStateStepper extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'pending':
         return 0;
-      case 'confirmed':
+      case 'picking':
         return 1;
-      case 'on_delivery':
+      case 'packed':
         return 2;
-      case 'completed':
+      case 'confirmed':
         return 3;
+      case 'on_delivery':
+        return 4;
+      case 'compiled':
+        return 5;
+      case 'canceled':
+        return 6; 
       default:
         return 0;
     }
@@ -37,14 +43,17 @@ class OrderStateStepper extends StatelessWidget {
 
     final steps = [
       {'title': S.of(context).order_status_pending, 'date': orderDate},
-      {'title': S.of(context).order_status_preparing, 'date': orderDate},
-      {'title': S.of(context).order_status_shipping, 'date': orderDate},
+      {'title': S.of(context).order_status_picking, 'date': orderDate},
+      {'title': S.of(context).order_status_packed, 'date': orderDate},
+      {'title': S.of(context).order_status_confirmed, 'date': orderDate},
+      {'title': S.of(context).order_status_on_delivery, 'date': orderDate},
       {
-        'title': S.of(context).order_status_delivered,
-        'date':
-            (currentStep >= 3)
-                ? shippingDate ?? S.of(context).delivered
-                : '••••',
+        'title': S.of(context).order_status_compiled,
+        'date': shippingDate ?? S.of(context).delivered,
+      },
+      {
+        'title': S.of(context).order_status_canceled,
+        'date': orderDate,
       },
     ];
 

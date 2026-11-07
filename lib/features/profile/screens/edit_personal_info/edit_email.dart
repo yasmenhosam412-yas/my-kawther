@@ -1,5 +1,7 @@
+import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
 import 'package:elkawther/features/profile/data/profile_local_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/l10n.dart';
@@ -19,12 +21,15 @@ class EditEmail extends StatefulWidget {
 class _EditEmailState extends State<EditEmail> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _emailController;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController(
-      text: ProfileLocalStore.instance.email,
+      text:
+          context.read<ProfileCubit>().userData?.email ??
+          ProfileLocalStore.instance.email,
     );
   }
 
@@ -32,6 +37,44 @@ class _EditEmailState extends State<EditEmail> {
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final cubit = context.read<ProfileCubit>();
+    final current = cubit.userData;
+    final updated = _emailController.text.trim();
+    final currentEmail = current?.email ?? ProfileLocalStore.instance.email;
+    if (updated == currentEmail) {
+      AppSnackBar.error(S.of(context).yourEmailAlready);
+      return;
+    }
+    if (current == null || current.id == 0) {
+      AppSnackBar.error(S.of(context).unexpectedError);
+      return;
+    }
+
+    setState(() => _saving = true);
+    await cubit.editDataUser(
+      current.id,
+      updated,
+      current.name,
+      current.phone,
+      context,
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    final state = cubit.state;
+    if (state is ProfileEditErrorState) {
+      final message = state.message?.localizedMessage(context) ?? '';
+      AppSnackBar.error(
+        message.isEmpty ? S.of(context).unexpectedError : message,
+      );
+      return;
+    }
+    AppSnackBar.success(S.of(context).loaded);
+    Navigator.pop(context);
   }
 
   @override
@@ -42,17 +85,8 @@ class _EditEmailState extends State<EditEmail> {
       subtitle: isAr ? 'حدّث بريدك الإلكتروني' : 'Update your email address',
       bottom: ProfilePrimaryButton(
         title: S.of(context).confirm,
-        onPressed: () {
-          if (!_formKey.currentState!.validate()) return;
-          final updated = _emailController.text.trim();
-          if (updated == ProfileLocalStore.instance.email) {
-            AppSnackBar.error(S.of(context).yourEmailAlready);
-            return;
-          }
-          ProfileLocalStore.instance.email = updated;
-          AppSnackBar.success(S.of(context).loaded);
-          Navigator.pop(context);
-        },
+        isLoading: _saving,
+        onPressed: _saving ? null : _save,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

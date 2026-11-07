@@ -155,6 +155,10 @@ class BrandProduct {
   });
 
   BrandProduct.fromJson(Map<String, dynamic> json) {
+    final nested = json['product'];
+    if (nested is Map) {
+      json = Map<String, dynamic>.from(nested);
+    }
     id = json['id'];
     rate = parseToDouble(json['rate']);
     image = json['image']?.toString();

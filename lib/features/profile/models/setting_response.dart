@@ -39,6 +39,7 @@ class BrandSettings {
   final String? keyCard;
   final String? privacyPolicy;
   final String? termsConditions;
+  final int? pointsValidityDays;
 
   BrandSettings({
     required this.id,
@@ -54,6 +55,7 @@ class BrandSettings {
     this.keyCard,
     this.privacyPolicy,
     this.termsConditions,
+    this.pointsValidityDays,
   });
 
   factory BrandSettings.fromJson(Map<String, dynamic> json) {
@@ -69,8 +71,11 @@ class BrandSettings {
       getY: json['get_y'],
       zaincash: json['zaincash'],
       keyCard: json['keycard'],
-      privacyPolicy: json['privacy_policy'],
-      termsConditions: json['terms_conditions'],
+      privacyPolicy: json['privacy_policy']?.toString(),
+      termsConditions: json['terms_conditions']?.toString(),
+      pointsValidityDays: json['points_validity_days'] is num
+          ? (json['points_validity_days'] as num).toInt()
+          : int.tryParse('${json['points_validity_days']}'),
     );
   }
 }

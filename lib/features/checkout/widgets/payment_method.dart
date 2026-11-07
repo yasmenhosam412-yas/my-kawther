@@ -1,8 +1,10 @@
 import 'package:elkawther/features/checkout/widgets/payment_method_button.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/features/profile/data/app_settings.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/widgets/image_upload_box.dart';
 
@@ -18,6 +20,7 @@ class _PaymentMethodsWidgetState extends State<PaymentMethodsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final zain = context.watch<AppSettings>().zaincash;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -93,17 +96,16 @@ class _PaymentMethodsWidgetState extends State<PaymentMethodsWidget> {
               ),
               const SizedBox(height: AppPadding.medium),
 
+              if (zain != null)
               Container(
-                width:
-                    double
-                        .infinity, // This makes the container take full screen width
+                width: double.infinity,
                 padding: const EdgeInsets.all(AppPadding.small),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[400]!),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  'رقم التحويل : 01012345678',
+                  '${S.of(context).zainCach}: $zain',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(),
                 ),
               ),

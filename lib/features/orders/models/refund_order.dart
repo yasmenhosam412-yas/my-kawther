@@ -24,17 +24,27 @@ class RefundOrder {
   });
 
   factory RefundOrder.fromJson(Map<String, dynamic> json) {
+    final body = json['data'] is Map
+        ? Map<String, dynamic>.from(json['data'] as Map)
+        : json;
+    String text(dynamic value) => value?.toString() ?? '';
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
     return RefundOrder(
-      userId: json['user_id'],
-      orderId: json['order_id'],
-      reason: json['reason'],
-      note: json['note'],
-      refundAmount: json['refund_amount'],
-      refundMethod: json['refund_method'],
-      address: json['address'],
-      updatedAt: json['updated_at'],
-      createdAt: json['created_at'],
-      id: json['id'],
+      userId: asInt(body['user_id']),
+      orderId: text(body['order_id']),
+      reason: text(body['reason']),
+      note: body['note']?.toString(),
+      refundAmount: text(body['refund_amount']),
+      refundMethod: text(body['refund_method']),
+      address: text(body['address']),
+      updatedAt: text(body['updated_at']),
+      createdAt: text(body['created_at']),
+      id: asInt(body['id']),
     );
   }
 }

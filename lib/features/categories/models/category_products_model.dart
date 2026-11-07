@@ -50,14 +50,22 @@ class CategoryProductsModelFilter {
   });
 
   CategoryProductsModelFilter.fromJson(Map<String, dynamic> json) {
-    status = json['status'];
+    status = json['status'] is bool ? json['status'] as bool? : null;
     message = json['message']?.toString();
-    if (json['data'] != null) {
-      data = <CategoryProductsData>[];
-      json['data'].forEach((v) {
-        data!.add(CategoryProductsData.fromJson(v));
-      });
-    }
+    final raw = json['data'];
+    final list = raw is Map && raw['products'] is List
+        ? raw['products'] as List
+        : raw is List
+        ? raw
+        : const [];
+    data = list
+        .whereType<Map>()
+        .map(
+          (item) => CategoryProductsData.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
     count = json['count'];
   }
 
@@ -135,6 +143,10 @@ class CategoryProductsData {
   });
 
   CategoryProductsData.fromJson(Map<String, dynamic> json) {
+    final nested = json['product'];
+    if (nested is Map) {
+      json = Map<String, dynamic>.from(nested);
+    }
     id = json['id'];
     price = json['price']?.toString();
     quantity = json['quantity'];

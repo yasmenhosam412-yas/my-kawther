@@ -31,6 +31,11 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthInitial());
   }
 
+  Future<void> deleteAccount() async {
+    await authService.deleteAccount();
+    emit(AuthInitial());
+  }
+
   Future<void> login({required String email, required String password}) async {
     emit(AuthLoading());
     try {

@@ -1,455 +1,285 @@
 import 'dart:io';
-import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
-import 'package:elkawther/core/widgets/app_snack_bar.dart';
-import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:elkawther/features/orders/models/order_details_model.dart';
-import 'package:elkawther/features/returns/widgets/payment_filter.dart';
-import 'package:skeletonizer/skeletonizer.dart';
-import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
-import 'package:elkawther/features/profile/cubit/profile_cubit.dart';
-import 'package:elkawther/core/routes/routes.dart';
-import 'package:elkawther/generated/assets.dart';
-import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_colors.dart';
-import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/features/profile/models/profile_models.dart';
-import 'package:elkawther/features/addresses/widgets/address_custom_container.dart';
-import 'package:elkawther/features/orders/widgets/order_product_item.dart';
-import 'package:elkawther/core/widgets/custom_elevated_button.dart';
 
+import 'package:elkawther/core/routes/routes.dart';
+import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
+import 'package:elkawther/features/addresses/widgets/build_address_bottom_sheet.dart';
+import 'package:elkawther/features/checkout/models/checkout_payment_method.dart';
+import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
+import 'package:elkawther/features/orders/models/order_details_model.dart';
+import 'package:elkawther/features/profile/models/profile_models.dart';
+import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
+import 'package:elkawther/generated/l10n.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class RefundProductSecondView extends StatefulWidget {
+  const RefundProductSecondView({
+    super.key,
+    required this.orderDetails,
+    required this.selectedReason,
+    required this.note,
+    this.imageFiles = const [],
+  });
+
   final OrderDetailsModel orderDetails;
   final List<File> imageFiles;
   final String selectedReason;
   final String note;
 
-  const RefundProductSecondView({
-    super.key,
-    required this.orderDetails,
-    this.imageFiles = const [],
-    required this.selectedReason,
-    required this.note,
-  });
-
   @override
-  State<RefundProductSecondView> createState() =>
-      _RefundProductSecondViewState();
+  State<RefundProductSecondView> createState() => _RefundProductSecondViewState();
 }
 
 class _RefundProductSecondViewState extends State<RefundProductSecondView> {
-  late final List<OrderProduct> products;
-  late final List<File> imageFiles;
-  AddressModel? selectedAddress;
-  final int _selectedIndex = 0;
-  bool _isLoading = false;
-  String refundMethod = "cash";
+  AddressModel? _selectedAddress;
+  List<CheckoutPaymentMethod> _methods = const [];
+  String _refundMethod = 'cash';
+  bool _loadingMethods = true;
+  bool _sending = false;
 
   @override
   void initState() {
     super.initState();
-    products = widget.orderDetails.products;
-    imageFiles = widget.imageFiles;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final addresses = context.read<AddressCubit>();
+      if (addresses.addresses == null) {
+        await addresses.getAllAddresses(context);
+      }
+      await _loadMethods();
+    });
+  }
 
-    final cubit = context.read<AddressCubit>();
-    if (cubit.addresses == null || cubit.addresses!.isEmpty) {
-      cubit.getAllAddresses(context);
+  Future<void> _loadMethods() async {
+    try {
+      final methods = await fetchCheckoutPaymentMethods();
+      if (!mounted) return;
+      setState(() {
+        _methods = methods;
+        _loadingMethods = false;
+        if (methods.isNotEmpty &&
+            !methods.any((method) => method.code == _refundMethod)) {
+          _refundMethod = methods.first.code;
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingMethods = false);
+    }
+  }
+
+  Future<void> _submit(AddressModel? address) async {
+    final line = address?.address?.trim() ?? '';
+    if (line.isEmpty) {
+      AppSnackBar.error(S.of(context).noAddressesFound);
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      await context.read<OrdersCubit>().requestRefund(
+        orderId: widget.orderDetails.orderId,
+        reason: widget.selectedReason,
+        note: widget.note,
+        refundAmount: widget.orderDetails.totalPrice,
+        refundMethod: _refundMethod,
+        address: line,
+        images: widget.imageFiles,
+      );
+      if (!mounted) return;
+      final state = context.read<OrdersCubit>().state;
+      if (state is OrdersRefunded) {
+        Navigator.pushReplacementNamed(context, Routes.successRefund);
+      } else if (state is OrdersError) {
+        AppSnackBar.error(state.error.localizedMessage(context));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final profileCubit = context.watch<AddressCubit>();
-    final defaultAddress = profileCubit.getDefaultAddress();
-    final addressToShow = selectedAddress ?? defaultAddress;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final addresses = context.watch<AddressCubit>();
+    final address = _selectedAddress ?? addresses.getDefaultAddress();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(S.of(context).return_product),
-        centerTitle: true,
+    return ProfileScaffold(
+      title: S.of(context).return_product,
+      subtitle: isAr ? 'العنوان وطريقة الاسترداد' : 'Address and refund method',
+      bottom: ProfilePrimaryButton(
+        title: S.of(context).submit_request,
+        isLoading: _sending,
+        onPressed: _sending ? null : () => _submit(address),
       ),
-      body: BlocListener<OrdersCubit, OrdersState>(
-        listener: (context, state) async {
-          if (state is OrdersLoading) {
-            setState(() => _isLoading = true);
-          } else {
-            setState(() => _isLoading = false);
-          }
-
-          if (state is OrdersRefunded) {
-            Navigator.pushReplacementNamed(context, Routes.successRefund);
-          } else if (state is OrdersError) {
-            AppSnackBar.error(S.of(context).unexpectedError);
-          }
-        },
-        child: AbsorbPointer(
-          absorbing: _isLoading,
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(AppPadding.small),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          ProfileFormCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          S.of(context).delivery_address,
-                          style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                            color: Colors.black,
-                          ),
+                    Expanded(
+                      child: Text(
+                        S.of(context).delivery_address,
+                        style: AppTextStyles.noto16w400.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.darkColor,
                         ),
-                        TextButton(
-                          onPressed: () {
-                            showDisplayAddressesBottomSheet(
-                              context,
-                              onAddressSelected: (address) {
-                                setState(() {
-                                  selectedAddress = address;
-                                });
-                              },
-                            );
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        showDisplayAddressesBottomSheet(
+                          context,
+                          selectedAddress: address,
+                          onAddressSelected: (value) {
+                            setState(() => _selectedAddress = value);
                           },
-                          child: Text(
-                            S.of(context).change,
-                            style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                              color: Colors.black.withOpacity(0.6),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppPadding.medium),
-                    if (addressToShow != null)
-                      AddressCustomContainer(
-                        selected: true,
-                        addControlButtons: false,
-                        isToRefund: true,
-                        addressModel: addressToShow,
-                      )
-                    else if (profileCubit.state is ProfileCubitLoadingState)
-                      Skeletonizer(
-                        containersColor: Colors.grey.shade100,
-                        child: AddressCustomContainer(
-                          selected: true,
-                          addControlButtons: false,
-                          isToRefund: true,
-                          addressModel: AddressModel(isDefault: false),
-                        ),
-                      )
-                    else
-                      Text(
-                        S.of(context).noAddressesFound,
-                        style: const TextStyle(color: AppColors.primaryColor),
-                      ),
-
-                    const SizedBox(height: AppPadding.medium),
-
-                    PaymentFilterChips(
-                      labels: [S.of(context).cash, S.of(context).zainCach],
-                      initialIndex: _selectedIndex,
-                      selectedMethod: (String val) {
-                        setState(() {
-                          refundMethod = val;
-                        });
+                        );
                       },
-                    ),
-
-                    const SizedBox(height: AppPadding.medium),
-
-                    Text(
-                      S.of(context).product_details,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AppPadding.medium),
-                    if (products.isNotEmpty)
-                      Column(
-                        children: List.generate(products.length, (index) {
-                          return Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: OrderProductItem(product: products[index]),
-                          );
-                        }),
-                      )
-                    else
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(Assets.unfound, width: 70, height: 70),
-                            const SizedBox(height: AppPadding.medium),
-                            Text(
-                              S.of(context).no_products_found,
-                              style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                                fontSize: 22,
-                                color: AppColors.primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const Divider(),
-                    const SizedBox(height: AppPadding.medium),
-
-                    Text(
-                      S.of(context).return_reason,
-                      style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                        color: Colors.black,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: AppPadding.small),
-                    Text(
-                      widget.selectedReason,
-                      style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                        color: Colors.black.withOpacity(0.6),
-                      ),
-                    ),
-                    const SizedBox(height: AppPadding.medium),
-
-                    if (widget.note.isNotEmpty) ...[
-                      Text(
-                        S.of(context).comment,
-                        style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                          color: Colors.black,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: AppPadding.small),
-                      Padding(
-                        padding: const EdgeInsets.all(2.0),
-                        child: Text(
-                          widget.note,
-                          style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                            color: Colors.black.withOpacity(0.6),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: AppPadding.medium),
-
-                    Text(
-                      S.of(context).pictures,
-                      style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: AppPadding.small2),
-                    Container(
-                      height: 200,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppPadding.small),
-                        border: Border.all(color: AppColors.darkColor),
-                      ),
-                      child:
-                          imageFiles.isNotEmpty
-                              ? ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: imageFiles.length,
-                                separatorBuilder:
-                                    (_, __) => const SizedBox(width: 8),
-                                itemBuilder:
-                                    (context, index) => ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.file(
-                                        imageFiles[index],
-                                        width: 120,
-                                        height: 200,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                              )
-                              : Center(
-                                child: Text(
-                                  S.of(context).no_images,
-                                  style: AppTextStyles.ibmPlexSans16w500
-                                      .copyWith(color: AppColors.grey),
-                                ),
-                              ),
-                    ),
-
-                    const SizedBox(height: AppPadding.medium),
-
-                    Container(
-                      padding: const EdgeInsets.all(AppPadding.medium),
-                      decoration: BoxDecoration(
-                        color: const Color(0xffD4D4D4).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(AppPadding.small),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            S.of(context).refund_amount,
-                            style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                              color: Colors.black,
-                            ),
-                          ),
-                          Text(
-                            '${getTotal(widget.orderDetails)} ${S.of(context).currency}',
-                            style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                              color: AppColors.darkColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppPadding.medium),
-                    CustomElevatedButton(
-                      onPressed:
-                          _isLoading
-                              ? null
-                              : () {
-                                final address =
-                                    (selectedAddress ?? defaultAddress)
-                                        ?.address ??
-                                    '';
-                                if (address.isEmpty) {
-                                  AppSnackBar.error(
-                                    S.of(context).noAddressesFound,
-                                  );
-                                  return;
-                                }
-
-                                context.read<OrdersCubit>().requestRefund(
-                                  orderId: widget.orderDetails.orderId,
-                                  reason: widget.selectedReason,
-                                  note: widget.note,
-                                  refundAmount: widget.orderDetails.totalPrice,
-                                  refundMethod: refundMethod,
-                                  address: address,
-                                  images: widget.imageFiles,
-                                );
-                              },
-                      title:
-                          _isLoading
-                              ? S.of(context).loading
-                              : S.of(context).submit_request,
-                      backgroundColor:
-                          _isLoading
-                              ? CupertinoColors.extraLightBackgroundGray
-                              : AppColors.primaryColor,
+                      child: Text(S.of(context).change),
                     ),
                   ],
                 ),
-              ),
-
-              if (_isLoading)
-                Container(
-                  color: Colors.black.withOpacity(0.2),
-                  child: const Center(child: CircularProgressIndicator()),
+                Text(
+                  address?.address?.trim().isNotEmpty == true
+                      ? address!.address!
+                      : S.of(context).noAddressesFound,
+                  style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void showDisplayAddressesBottomSheet(
-    BuildContext context, {
-    required Function(AddressModel selectedAddress) onAddressSelected,
-  }) {
-    showModalBottomSheet(
-      backgroundColor: Colors.white,
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return BlocBuilder<ProfileCubit, ProfileCubitState>(
-          builder: (context, state) {
-            final addresses = context.read<AddressCubit>().addresses ?? [];
-
-            if (state is ProfileCubitLoadingState) {
-              return const Padding(
-                padding: EdgeInsets.all(AppPadding.large),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (addresses.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.all(AppPadding.large),
-                child: Center(
-                  child: Text(
-                    S.of(context).noAddressesFound,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              );
-            }
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppPadding.medium,
-                horizontal: AppPadding.medium,
+          const SizedBox(height: 16),
+          Text(
+            isAr ? 'طريقة الاسترداد' : 'Refund method',
+            style: AppTextStyles.noto16w400.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.darkColor,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (_loadingMethods)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: AppColors.primaryColor),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    S.of(context).please_select_address,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppPadding.medium),
-                  ...addresses.map((address) {
-                    return Card(
-                      color: Colors.grey.shade100,
-                      elevation: 0,
-                      child: ListTile(
-                        title: Text(
-                          address.address ?? 'No address',
-                          style: AppTextStyles.noto16w400.copyWith(
-                            color: Colors.black,
-                          ),
-                        ),
-                        subtitle: Text(
-                          address.city ?? '',
-                          style: AppTextStyles.noto16w400.copyWith(
-                            color: Colors.black,
-                          ),
-                        ),
-                        trailing:
-                            address.isDefault
-                                ? Text(
-                                  S.of(context).defultAddress,
-                                  style: AppTextStyles.noto16w400.copyWith(
-                                    fontSize: 12,
+            )
+          else
+            ...(_methods.isEmpty
+                    ? [
+                      CheckoutPaymentMethod(
+                        code: 'cash',
+                        type: 'cash',
+                        name: S.of(context).cash,
+                        requiresReceipt: false,
+                      ),
+                    ]
+                    : _methods)
+                .map(
+                  (method) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => setState(() => _refundMethod = method.code),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Icon(method.icon, color: AppColors.primaryColor),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  method.name,
+                                  style: AppTextStyles.noto14w400.copyWith(
+                                    fontWeight: FontWeight.w700,
                                     color: AppColors.darkColor,
                                   ),
-                                )
-                                : null,
-                        onTap: () {
-                          Navigator.pop(context);
-                          onAddressSelected(address);
-                        },
+                                ),
+                              ),
+                              Icon(
+                                _refundMethod == method.code
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_off,
+                                color: AppColors.primaryColor,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    );
-                  }),
+                    ),
+                  ),
+                ),
+          const SizedBox(height: 6),
+          ProfileFormCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _line(S.of(context).return_reason, widget.selectedReason),
+                if (widget.note.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _line(S.of(context).note, widget.note),
                 ],
-              ),
-            );
-          },
-        );
-      },
+                const SizedBox(height: 10),
+                _line(S.of(context).refund_amount, widget.orderDetails.totalPrice),
+                if (widget.imageFiles.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 84,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: widget.imageFiles.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) => ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          widget.imageFiles[index],
+                          width: 84,
+                          height: 84,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  String getTotal(OrderDetailsModel orderDetails) {
-    double orderTotal = double.parse(orderDetails.totalPrice);
-    double deliveryFee = double.parse(orderDetails.deliveryFee);
-    return (orderTotal - deliveryFee).toStringAsFixed(0);
+  Widget _line(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: AppTextStyles.noto14w400.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkColor,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

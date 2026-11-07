@@ -1,4 +1,6 @@
 import 'package:elkawther/core/services/local_notifications.dart';
+import 'package:elkawther/core/widgets/guest_user_dialog.dart';
+import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/app_snack_bar.dart';
@@ -58,7 +60,11 @@ class _MyDoseViewState extends State<MyDoseView>
     super.initState();
     selectedDayIndex = _dayIndexMap[DateTime.now().weekday] ?? 3;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<MedicationCubit>().fetchAllMedications();
+      if (!mounted) return;
+      final auth = context.read<AuthCubit>().state;
+      if (auth is AuthLoadedLogin || auth is AuthLoadedRegister) {
+        context.read<MedicationCubit>().fetchAllMedications();
+      }
     });
   }
 
@@ -172,6 +178,27 @@ class _MyDoseViewState extends State<MyDoseView>
     super.build(context);
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          current is AuthLoadedLogin || current is AuthLoadedRegister,
+      listener: (context, state) {
+        context.read<MedicationCubit>().fetchAllMedications();
+      },
+      child: BlocBuilder<AuthCubit, AuthState>(
+        builder: (context, authState) {
+          if (authState is AuthVisitor) {
+            return const Scaffold(
+              backgroundColor: Color(0xFFF5FAFD),
+              body: LoginFirstView(),
+            );
+          }
+          return _doseScaffold(context, isAr);
+        },
+      ),
+    );
+  }
+
+  Widget _doseScaffold(BuildContext context, bool isAr) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5FAFD),
       body: Column(

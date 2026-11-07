@@ -1,13 +1,11 @@
-import 'package:easy_localization/easy_localization.dart';
-import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
+import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/features/orders/cubit/orders_cubit.dart';
+import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
+import 'package:elkawther/features/returns/widgets/returns_card.dart';
+import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shimmer/shimmer.dart';
-
-import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/features/returns/widgets/returns_card.dart';
 
 class ReturnsView extends StatefulWidget {
   const ReturnsView({super.key});
@@ -25,104 +23,69 @@ class _ReturnsViewState extends State<ReturnsView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          S.of(context).returns,
-          style: AppTextStyles.ibmPlexSans16w500.copyWith(
-            color: Colors.black,
-            fontSize: 20,
-          ),
-        ),
-      ),
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    return ProfileScaffold(
+      title: S.of(context).returns,
+      subtitle: isAr ? 'طلبات الاسترجاع واسترداد المبلغ' : 'Return requests and refunds',
       body: BlocBuilder<OrdersCubit, OrdersState>(
         builder: (context, state) {
           if (state is OrdersLoading) {
-            return const Center(child: ShimmerLoadingVertical());
-          } else if (state is OrderReturnsLoaded) {
-            final returns = state.allReturns;
-
-            if (returns.isEmpty) {
-              return Center(child: Text(S.of(context).noReturns));
-            }
-
-            return ListView.separated(
-              padding: const EdgeInsets.all(AppPadding.medium),
-              itemCount: returns.length,
-              separatorBuilder:
-                  (context, index) => const SizedBox(height: AppPadding.medium),
-              itemBuilder: (context, index) {
-                final returnItem = returns[index];
-
-                return ReturnCard(
-                  orderNumber: returnItem.id,
-                  orderId: returnItem.orderId,
-                  totalPrice:
-                      "${double.parse(returnItem.order.totalPrice).toStringAsFixed(0)} ${S.of(context).currency}",
-                  date: DateFormat(
-                    'd MMMM yyyy',
-                    'ar',
-                  ).format(returnItem.order.createdAt),
-
-                  status: _mapStatus(returnItem.status),
-                  returnItem: returnItem,
-                );
-              },
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryColor),
             );
-          } else if (state is OrdersError) {
-            return Center(child: Text(state.error.localizedMessage(context)));
-          } else {
-            return const SizedBox();
           }
+          if (state is OrdersError) {
+            return _ReturnsNotice(
+              message: state.error.localizedMessage(context),
+              action: S.of(context).retry,
+              onTap: () => context.read<OrdersCubit>().getAllReturns(),
+            );
+          }
+          if (state is! OrderReturnsLoaded) return const SizedBox();
+          if (state.allReturns.isEmpty) {
+            return _ReturnsNotice(message: S.of(context).noReturns);
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            itemCount: state.allReturns.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return ReturnCard(item: state.allReturns[index]);
+            },
+          );
         },
       ),
     );
   }
-
-  ReturnStatus _mapStatus(String status) {
-    switch (status.toLowerCase()) {
-      case "accepted":
-        return ReturnStatus.accepted;
-      case "canceled":
-        return ReturnStatus.canceled;
-      case "rejected":
-        return ReturnStatus.rejected;
-      case "pending":
-        return ReturnStatus.pending;
-      default:
-        return ReturnStatus.pending;
-    }
-  }
 }
 
-class ShimmerLoadingVertical extends StatelessWidget {
-  const ShimmerLoadingVertical({super.key});
+class _ReturnsNotice extends StatelessWidget {
+  const _ReturnsNotice({required this.message, this.action, this.onTap});
+
+  final String message;
+  final String? action;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    const itemCount = 6;
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: itemCount,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: Colors.grey.shade300,
-          highlightColor: Colors.grey.shade100,
-          child: Container(
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(12),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
             ),
-          ),
-        );
-      },
+            if (action != null) ...[
+              const SizedBox(height: 12),
+              ElevatedButton(onPressed: onTap, child: Text(action!)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

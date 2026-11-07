@@ -13,12 +13,22 @@ class PointTileWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final date = point.redeemedAt ?? point.expiredAt ?? point.expiresAt ?? point.createdAt;
+    final dateLabel = point.redeemedAt != null
+        ? S.of(context).redeemedAt
+        : point.expiredAt != null
+        ? S.of(context).expired_at
+        : point.expiresAt != null
+        ? S.of(context).expiresIn
+        : '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6EEF5)),
       ),
       child: Row(
         children: [
@@ -30,8 +40,9 @@ class PointTileWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
-              Icons.monetization_on_rounded,
+              Icons.stars_rounded,
               color: AppColors.teal,
+              size: 22,
             ),
           ),
           const SizedBox(width: 12),
@@ -41,6 +52,8 @@ class PointTileWidget extends StatelessWidget {
               children: [
                 Text(
                   point.orderName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.noto14w400.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppColors.darkColor,
@@ -48,7 +61,9 @@ class PointTileWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('yyyy - MM - dd').format(point.createdAt),
+                  dateLabel.isEmpty
+                      ? DateFormat('dd/MM/yyyy').format(date)
+                      : '$dateLabel ${DateFormat('dd/MM/yyyy').format(date)}',
                   style: AppTextStyles.noto14w400.copyWith(
                     color: AppColors.grey,
                     fontSize: 12,
@@ -57,11 +72,18 @@ class PointTileWidget extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            '${point.pointsEarned} ${S.of(context).point}',
-            style: AppTextStyles.noto14w400.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.teal,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.teal.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${point.pointsEarned}',
+              style: AppTextStyles.noto14w400.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.teal,
+              ),
             ),
           ),
         ],

@@ -35,13 +35,11 @@ class HomeDemoProduct {
 
   bool get hasDiscount => originalPrice != null || discountLabel != null;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 
-  String subtitle(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar'
-          ? subtitleAr
-          : subtitleEn;
+  String subtitle(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar'
+      ? subtitleAr
+      : subtitleEn;
 }
 
 class HomeDemoChip {
@@ -57,8 +55,7 @@ class HomeDemoChip {
   final String nameEn;
   final String imageUrl;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 }
 
 class HomeDemoBrand {
@@ -82,13 +79,11 @@ class HomeDemoBrand {
   final Color color;
   final List<int> productIds;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 
-  String category(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar'
-          ? categoryAr
-          : categoryEn;
+  String category(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar'
+      ? categoryAr
+      : categoryEn;
 
   String get initial => nameEn.isNotEmpty ? nameEn[0].toUpperCase() : '?';
 }
@@ -116,13 +111,11 @@ class HomeDemoProblem {
   final List<int> productIds;
   final String imageUrl;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 
-  String subtitle(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar'
-          ? subtitleAr
-          : subtitleEn;
+  String subtitle(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar'
+      ? subtitleAr
+      : subtitleEn;
 }
 
 class HomeDemoSubcategory {
@@ -138,8 +131,7 @@ class HomeDemoSubcategory {
   final String nameEn;
   final String imageUrl;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 }
 
 class HomeDemoCategory {
@@ -157,8 +149,7 @@ class HomeDemoCategory {
   final String imageUrl;
   final List<HomeDemoSubcategory> subcategories;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 }
 
 class HomeDemoBanner {
@@ -174,8 +165,7 @@ class HomeDemoBanner {
   final String imageUrl;
   final String? link;
 
-  String title(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? titleAr : titleEn;
+  String title(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? titleAr : titleEn;
 }
 
 class HomeDemoReview {
@@ -195,13 +185,11 @@ class HomeDemoReview {
   final int rating;
   final String date;
 
-  String name(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
+  String name(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar' ? nameAr : nameEn;
 
-  String comment(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar'
-          ? commentAr
-          : commentEn;
+  String comment(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar'
+      ? commentAr
+      : commentEn;
 }
 
 class HomeDemoData {
@@ -348,17 +336,7 @@ class HomeDemoData {
     ),
   ];
 
-  static List<HomeDemoChip> get categories =>
-      catalogCategories
-          .map(
-            (category) => HomeDemoChip(
-              id: category.id,
-              nameAr: category.nameAr,
-              nameEn: category.nameEn,
-              imageUrl: category.imageUrl,
-            ),
-          )
-          .toList();
+  static List<HomeDemoChip> get categories => catalogCategories.map((category) => HomeDemoChip(id: category.id, nameAr: category.nameAr, nameEn: category.nameEn, imageUrl: category.imageUrl)).toList();
 
   static const catalogBrands = [
     HomeDemoBrand(
@@ -493,23 +471,13 @@ class HomeDemoData {
     ),
   ];
 
-  static List<HomeDemoChip> get brands =>
-      catalogBrands
-          .map(
-            (brand) => HomeDemoChip(
-              id: brand.id,
-              nameAr: brand.nameAr,
-              nameEn: brand.nameEn,
-              imageUrl: brand.logoUrl,
-            ),
-          )
-          .toList();
+  static List<HomeDemoChip> get brands => catalogBrands.map((brand) => HomeDemoChip(id: brand.id, nameAr: brand.nameAr, nameEn: brand.nameEn, imageUrl: brand.logoUrl)).toList();
 
   static const catalogProblems = [
     HomeDemoProblem(
       id: 1,
       nameAr: 'العناية بالبشرة',
-      nameEn: 'Skincare',
+      nameEn: 'Skin care',
       subtitleAr: 'منتجات ACM للعناية بالبشرة',
       subtitleEn: 'ACM products for skincare',
       icon: Icons.face_retouching_natural_rounded,
@@ -548,17 +516,7 @@ class HomeDemoData {
     ),
   ];
 
-  static List<HomeDemoChip> get healthIssues =>
-      catalogProblems
-          .map(
-            (problem) => HomeDemoChip(
-              id: problem.id,
-              nameAr: problem.nameAr,
-              nameEn: problem.nameEn,
-              imageUrl: '',
-            ),
-          )
-          .toList();
+  static List<HomeDemoChip> get healthIssues => catalogProblems.map((problem) => HomeDemoChip(id: problem.id, nameAr: problem.nameAr, nameEn: problem.nameEn, imageUrl: '')).toList();
 
   static const allProducts = [
     HomeDemoProduct(
@@ -601,8 +559,7 @@ class HomeDemoData {
       nameAr: 'أكتي كولا أدفانس 30 كيس',
       nameEn: 'Acti-Colla Advance 30 sachets',
       subtitleAr: 'مكمل كولاجين مع الكركم والفلفل الأسود وفيتامين سي.',
-      subtitleEn:
-          'Collagen supplement with turmeric, black pepper, and vitamin C.',
+      subtitleEn: 'Collagen supplement with turmeric, black pepper, and vitamin C.',
       price: 55,
       imageUrl: _Images.actiCollaAdvance,
     ),
@@ -654,7 +611,7 @@ class HomeDemoData {
       id: 9,
       categoryId: 1,
       subcategoryId: 101,
-      nameAr: 'ديكلاك 150 آي دي، 20 قرص',
+      nameAr: 'ديك拉克 150 آي دي، 20 قرص',
       nameEn: 'Diclac 150 ID, 20 tablets',
       subtitleAr: 'ديكلوفيناك صوديوم 150 مجم، أقراص ممتدة المفعول.',
       subtitleEn: 'Diclofenac sodium 150mg prolonged-release tablets.',
@@ -700,8 +657,7 @@ class HomeDemoData {
       subcategoryId: 102,
       nameAr: 'فوار فواكه، 6 أكياس',
       nameEn: 'Fawar Fruit, 6 sachets',
-      subtitleAr:
-          'عبوة أكياس بنكهة الفاكهة؛ راجع العبوة لمعرفة طريقة الاستخدام.',
+      subtitleAr: 'عبوة أكياس بنكهة الفاكهة؛ راجع العبوة لمعرفة طريقة الاستخدام.',
       subtitleEn: 'Fruit-flavoured sachets; refer to the pack for directions.',
       price: 72,
       imageUrl: _Images.fawarFruit,
@@ -734,10 +690,8 @@ class HomeDemoData {
       subcategoryId: 101,
       nameAr: 'بيسبيولر 140/125/125 مجم، 120 كبسولة',
       nameEn: 'Bispvyller 140/125/125mg, 120 capsules',
-      subtitleAr:
-          'بزموت سبساليسيلات البوتاسيوم وميترونيدازول وتيتراسيكلين هيدروكلوريد.',
-      subtitleEn:
-          'Bismuth subsalicylate potassium, metronidazole, and tetracycline hydrochloride.',
+      subtitleAr: 'بزموت سبساليسيلات البوتاسيوم وميترونيدازول وتيتراسيكلين هيدروكلوريد.',
+      subtitleEn: 'Bismuth subsalicylate potassium, metronidazole, and tetracycline hydrochloride.',
       price: 650,
       imageUrl: _Images.bispyller,
     ),
@@ -785,18 +739,503 @@ class HomeDemoData {
       price: 325,
       imageUrl: _Images.collagenC,
     ),
+    // Additional products
+    HomeDemoProduct(
+      id: 21,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'إيه سي إم مرطب يومي 50 مل',
+      nameEn: 'ACM Daily Moisturizer 50ml',
+      subtitleAr: 'ترطيب مستمر للبشرة الجافة والحساسة.',
+      subtitleEn: 'Continuous hydration for dry and sensitive skin.',
+      price: 180,
+      imageUrl: _Images.cicastim,
+    ),
+    HomeDemoProduct(
+      id: 22,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'إيه سي إم سنسبشن كريم SPF 50',
+      nameEn: 'ACM sensation Cream SPF 50',
+      subtitleAr: 'كريم حماية من الشمس SPF 50',
+      subtitleEn: 'Sun protection cream SPF 50',
+      price: 320,
+      imageUrl: _Images.depiwhite,
+    ),
+    HomeDemoProduct(
+      id: 23,
+      categoryId: 2,
+      subcategoryId: 201,
+      nameAr: 'مكمل كولاجين فيتامين سي 60 كيس',
+      nameEn: 'Collagen Vitamin C 60 sachets',
+      subtitleAr: 'مكمل كولاجين وفيتامين سي لدعم الصحة العامة.',
+      subtitleEn: 'Collagen and vitamin C supplement for overall health.',
+      price: 120,
+      imageUrl: _Images.actiCollaAdvance,
+    ),
+    HomeDemoProduct(
+      id: 24,
+      categoryId: 2,
+      subcategoryId: 202,
+      nameAr: 'مكملات المفاصل والكولاجين',
+      nameEn: 'Joints and Collagen Supplements',
+      subtitleAr: 'دعم صحة المفاصل والعظام.',
+      subtitleEn: 'Joint and bone health support.',
+      price: 150,
+      imageUrl: _Images.actinPlus,
+    ),
+    HomeDemoProduct(
+      id: 25,
+      categoryId: 4,
+      subcategoryId: 401,
+      nameAr: 'زيت روزماري للشعر',
+      nameEn: 'Rosemary Hair Oil',
+      subtitleAr: 'زيت روزماري لتقوية الشعر ونموه.',
+      subtitleEn: 'Rosemary oil for hair strengthening and growth.',
+      price: 85,
+      imageUrl: _Images.alejonHairLoss,
+    ),
+    HomeDemoProduct(
+      id: 26,
+      categoryId: 5,
+      subcategoryId: 501,
+      nameAr: 'غسول أطفال لطيف',
+      nameEn: 'Gentle Baby Wash',
+      subtitleAr: 'غسول لطيف للبشرة الحساسة للأطفال.',
+      subtitleEn: 'Gentle wash for sensitive baby skin.',
+      price: 55,
+      imageUrl: _Images.careLotion,
+    ),
+    HomeDemoProduct(
+      id: 27,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'أسيتامينوفين 500 مجم، 20 قرص',
+      nameEn: 'Acetaminophen 500mg, 20 tablets',
+      subtitleAr: 'مسكّن ومخفض للحرارة.',
+      subtitleEn: 'Pain reliever and fever reducer.',
+      price: 45,
+      imageUrl: _Images.diclac,
+    ),
+    HomeDemoProduct(
+      id: 28,
+      categoryId: 6,
+      subcategoryId: 601,
+      nameAr: ' rougesérosity قلم Eye Liner',
+      nameEn: 'Rouge Serosity Eye Liner',
+      subtitleAr: ' قلم تحديد العيون.',
+      subtitleEn: 'Eye liner pencil.',
+      price: 120,
+      imageUrl: _Images.essenceMascara,
+    ),
+    HomeDemoProduct(
+      id: 29,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'أموكسيسيلين 500 مجم، 20 قرص',
+      nameEn: 'Amoxicillin 500mg, 20 tablets',
+      subtitleAr: 'مضاد حيوي واسع المجال.',
+      subtitleEn: 'Broad-spectrum antibiotic.',
+      price: 85,
+      imageUrl: _Images.fatroxim,
+    ),
+    HomeDemoProduct(
+      id: 30,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'اوميبرازول 20 مجم، 14 قرص',
+      nameEn: 'Omeprazole 20mg, 14 tablets',
+      subtitleAr: 'علاج الحموضة وعسر الهضم.',
+      subtitleEn: 'Treatment for acid reflux and indigestion.',
+      price: 70,
+      imageUrl: _Images.forxiga,
+    ),
+    HomeDemoProduct(
+      id: 31,
+      categoryId: 1,
+      subcategoryId: 102,
+      nameAr: 'اسمحيل 6 أكياس',
+      nameEn: 'Samhafil 6 sachets',
+      subtitleAr: 'عبوة أكياس للجهاز الهضمي.',
+      subtitleEn: 'Sachets for digestive system.',
+      price: 60,
+      imageUrl: _Images.fawarFruit,
+    ),
+    HomeDemoProduct(
+      id: 32,
+      categoryId: 4,
+      subcategoryId: 402,
+      nameAr: 'زيت أركان للشعر',
+      nameEn: 'Argan Hair Oil',
+      subtitleAr: 'زيت أركان لترطيب الشعر.',
+      subtitleEn: 'Argan oil for hair moisturizing.',
+      price: 95,
+      imageUrl: _Images.honeyHairOil,
+    ),
+    HomeDemoProduct(
+      id: 33,
+      categoryId: 5,
+      subcategoryId: 502,
+      nameAr: ' شامبو الأطفال الطبيعي',
+      nameEn: 'Natural Baby Shampoo',
+      subtitleAr: 'شامبو طبيعي لطيف للأطفال.',
+      subtitleEn: 'Gentle natural shampoo for babies.',
+      price: 65,
+      imageUrl: _Images.babyBath,
+    ),
+    HomeDemoProduct(
+      id: 34,
+      categoryId: 5,
+      subcategoryId: 501,
+      nameAr: 'كريم حماية من الحفاضات',
+      nameEn: 'Diaper Rash Cream',
+      subtitleAr: 'كريم حماية من الحفاضات.',
+      subtitleEn: 'Diaper rash protection cream.',
+      price: 90,
+      imageUrl: _Images.cradleCap,
+    ),
+    HomeDemoProduct(
+      id: 35,
+      categoryId: 2,
+      subcategoryId: 202,
+      nameAr: 'مكمل البيوتين للكولاجين',
+      nameEn: 'Biotin Collagen Supplement',
+      subtitleAr: 'مكمل البيوتين لتعزيز الكولاجين.',
+      subtitleEn: 'Biotin supplement for collagen enhancement.',
+      price: 110,
+      imageUrl: _Images.collagenC,
+    ),
+  ];
+  // Extended demo products 36-135
+  static const allProductsExtended = [
+    HomeDemoProduct(
+      id: 36,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'سيبروفلوكساسين 500 مجم، 10 أقراص',
+      nameEn: 'Ciprofloxacin 500mg, 10 tablets',
+      subtitleAr: 'مضاد حيوي للعدوات البكتيرية.',
+      subtitleEn: 'Antibiotic for bacterial infections.',
+      price: 120,
+      imageUrl: _Images.fatroxim,
+    ),
+    HomeDemoProduct(
+      id: 37,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'أموكسيسيلين 250 مجم، 20 قرص',
+      nameEn: 'Amoxicillin 250mg, 20 tablets',
+      subtitleAr: 'مضاد حيوي واسع المجال للأطفال.',
+      subtitleEn: 'Broad-spectrum antibiotic for children.',
+      price: 95,
+      imageUrl: _Images.fatroxim,
+    ),
+    HomeDemoProduct(
+      id: 38,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'أزيثرومايسين 500 مجم، 3 أقراص',
+      nameEn: 'Azithromycin 500mg, 3 tablets',
+      subtitleAr: 'مضاد حيوي لعلاج التهابات الجهاز التنفسي.',
+      subtitleEn: 'Antibiotic for respiratory tract infections.',
+      price: 150,
+      imageUrl: _Images.forxiga,
+    ),
+    HomeDemoProduct(
+      id: 39,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'وارفارين 5 مجم، 28 قرص',
+      nameEn: 'Warfarin 5mg, 28 tablets',
+      subtitleAr: 'مسيّل للدم.',
+      subtitleEn: 'Blood thinner.',
+      price: 80,
+      imageUrl: _Images.forxiga,
+    ),
+    HomeDemoProduct(
+      id: 40,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'ريفامبين 450 مجم، 30 كبسولة',
+      nameEn: 'Rifampin 450mg, 30 capsules',
+      subtitleAr: 'مضاد حيوي لعلاج السل.',
+      subtitleEn: 'Antibiotic for tuberculosis treatment.',
+      price: 200,
+      imageUrl: _Images.diclac,
+    ),
+    HomeDemoProduct(
+      id: 41,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'ليدوكائين 2٪ جل، 30 جرام',
+      nameEn: 'Lidocaine 2% Gel, 30g',
+      subtitleAr: 'مخدر موضعي للجلد.',
+      subtitleEn: 'Topical anesthetic for skin.',
+      price: 65,
+      imageUrl: _Images.diclac,
+    ),
+    HomeDemoProduct(
+      id: 42,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'مينوكسيديل 5% محلول، 60 مل',
+      nameEn: 'Minoxidil 5% Solution, 60ml',
+      subtitleAr: 'علاج تساقط الشعر.',
+      subtitleEn: 'Hair loss treatment.',
+      price: 180,
+      imageUrl: _Images.alejonHairLoss,
+    ),
+    HomeDemoProduct(
+      id: 43,
+      categoryId: 1,
+      subcategoryId: 101,
+      nameAr: 'فيناسترايد 5 مجم، 30 قرص',
+      nameEn: 'Finasteride 5mg, 30 tablets',
+      subtitleAr: 'علاج تساقط الشعر وزيادة النمو.',
+      subtitleEn: 'Hair loss treatment and growth promotion.',
+      price: 220,
+      imageUrl: _Images.alejonHairLoss,
+    ),
+    HomeDemoProduct(
+      id: 44,
+      categoryId: 1,
+      subcategoryId: 102,
+      nameAr: 'ثلاميتون 250 مجم، 10 أقراص',
+      nameEn: 'Thalitone 250mg, 10 tablets',
+      subtitleAr: 'حبوب مدرة للبول.',
+      subtitleEn: 'Diuretic tablets.',
+      price: 75,
+      imageUrl: _Images.fawarFruit,
+    ),
+    HomeDemoProduct(
+      id: 45,
+      categoryId: 1,
+      subcategoryId: 102,
+      nameAr: 'فيدرال 10 مجم، 30 قرص',
+      nameEn: 'Fedral 10mg, 30 tablets',
+      subtitleAr: 'علاج فرط النشاط ونقص الانتباه.',
+      subtitleEn: 'ADHD treatment.',
+      price: 250,
+      imageUrl: _Images.fawarFruit,
+    ),
+    HomeDemoProduct(
+      id: 46,
+      categoryId: 2,
+      subcategoryId: 201,
+      nameAr: 'مكمل أوميغا 3، 30 كبسولة',
+      nameEn: 'Omega-3 Supplement, 30 capsules',
+      subtitleAr: 'مكمل صحي للقلب والدماغ.',
+      subtitleEn: 'Health supplement for heart and brain.',
+      price: 110,
+      imageUrl: _Images.actiCollaAdvance,
+    ),
+    HomeDemoProduct(
+      id: 47,
+      categoryId: 2,
+      subcategoryId: 201,
+      nameAr: 'فيتامين د3 1000 وحدة، 30 قرص',
+      nameEn: 'Vitamin D3 1000 IU, 30 tablets',
+      subtitleAr: 'لصحة العظام والمناعة.',
+      subtitleEn: 'For bone and immune health.',
+      price: 85,
+      imageUrl: _Images.actiCollaAdvance,
+    ),
+    HomeDemoProduct(
+      id: 48,
+      categoryId: 2,
+      subcategoryId: 201,
+      nameAr: 'مكمل مغنيسيوم 200 مجم، 60 قرص',
+      nameEn: 'Magnesium 200mg, 60 tablets',
+      subtitleAr: 'لصحة العضلات والأعصاب.',
+      subtitleEn: 'For muscle and nerve health.',
+      price: 70,
+      imageUrl: _Images.actiCollaC,
+    ),
+    HomeDemoProduct(
+      id: 49,
+      categoryId: 2,
+      subcategoryId: 202,
+      nameAr: 'كلس الكالسيوم مع فيتامين د',
+      nameEn: 'Calcium with Vitamin D',
+      subtitleAr: 'لصحة العظام والأسنان.',
+      subtitleEn: 'For bone and dental health.',
+      price: 95,
+      imageUrl: _Images.actinPlus,
+    ),
+    HomeDemoProduct(
+      id: 50,
+      categoryId: 2,
+      subcategoryId: 202,
+      nameAr: 'مكمل البروتوكول اليومي',
+      nameEn: 'Daily Protocol Supplement',
+      subtitleAr: 'مكمل شامل للصحة اليومية.',
+      subtitleEn: 'Daily health comprehensive supplement.',
+      price: 150,
+      imageUrl: _Images.actinPlus,
+    ),
+    HomeDemoProduct(
+      id: 51,
+      categoryId: 2,
+      subcategoryId: 202,
+      nameAr: 'بيروسيكولين 10 مجم، 30 قرص',
+      nameEn: 'Pyridoxine B6 10mg, 30 tablets',
+      subtitleAr: 'فيتامين ب6 لصحة الأعصاب.',
+      subtitleEn: 'Vitamin B6 for nerve health.',
+      price: 60,
+      imageUrl: _Images.actinPlus,
+    ),
+    HomeDemoProduct(
+      id: 52,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'تونر ترطيب البشرة',
+      nameEn: 'Hydration Toner',
+      subtitleAr: 'ترطيب وتفريش البشرة.',
+      subtitleEn: 'Hydration and refreshing toner.',
+      price: 90,
+      imageUrl: _Images.cicastim,
+    ),
+    HomeDemoProduct(
+      id: 53,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'قشطرة كيميائية خفيفة',
+      nameEn: 'Light Chemical Peeling',
+      subtitleAr: 'تجديد خلايا البشرة.',
+      subtitleEn: 'Cell renewal peeling.',
+      price: 350,
+      imageUrl: _Images.depiwhite,
+    ),
+    HomeDemoProduct(
+      id: 54,
+      categoryId: 3,
+      subcategoryId: 302,
+      nameAr: 'كريم حماية شمسensitive',
+      nameEn: 'Sensitive Skin Sunscreen',
+      subtitleAr: 'حماية من الشمس للبشرة الحساسة.',
+      subtitleEn: 'Sun protection for sensitive skin.',
+      price: 280,
+      imageUrl: _Images.depiwhiteEye,
+    ),
+    HomeDemoProduct(
+      id: 55,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'سرباتيل الكوبراسي',
+      nameEn: 'Copper Peptide Serum',
+      subtitleAr: 'مصل لبناء الكولاجين.',
+      subtitleEn: 'Collagen-building serum.',
+      price: 320,
+      imageUrl: _Images.cicastim,
+    ),
+    HomeDemoProduct(
+      id: 56,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'قناع الطين الأخضر',
+      nameEn: 'Green Clay Mask',
+      subtitleAr: 'قناصطاف عميق وتنقيص المسام.',
+      subtitleEn: 'Deep cleansing and pore minimization.',
+      price: 120,
+      imageUrl: _Images.cicastim,
+    ),
+    HomeDemoProduct(
+      id: 57,
+      categoryId: 3,
+      subcategoryId: 301,
+      nameAr: 'سيروم فيتامين سي',
+      nameEn: 'Vitamin C Serum',
+      subtitleAr: 'تبييض وتوحيد لون البشرة.',
+      subtitleEn: 'Skin brightening and evening tone.',
+      price: 250,
+      imageUrl: _Images.depiwhite,
+    ),
+    HomeDemoProduct(
+      id: 58,
+      categoryId: 4,
+      subcategoryId: 401,
+      nameAr: 'شامبو تقوية الشعر',
+      nameEn: 'Hair Strengthening Shampoo',
+      subtitleAr: 'لتقوية البصيلات ومنع التساقط.',
+      subtitleEn: 'Strengthens hair follicles and prevents loss.',
+      price: 110,
+      imageUrl: _Images.alejonHairLoss,
+    ),
+    HomeDemoProduct(
+      id: 59,
+      categoryId: 4,
+      subcategoryId: 401,
+      nameAr: 'بلسم ترميمي',
+      nameEn: 'Restorative Conditioner',
+      subtitleAr: 'لإصلاح التلف وتنعيم الشعر.',
+      subtitleEn: 'Repairs damage and smooths hair.',
+      price: 95,
+      imageUrl: _Images.alejonHairLoss,
+    ),
+    HomeDemoProduct(
+      id: 60,
+      categoryId: 4,
+      subcategoryId: 401,
+      nameAr: 'زيت خروع للشعر',
+      nameEn: 'Castor Oil for Hair',
+      subtitleAr: 'لنمو الشعر الكثيف.',
+      subtitleEn: 'For thick hair growth.',
+      price: 75,
+      imageUrl: _Images.alejonHairLoss,
+    ),
+    HomeDemoProduct(
+      id: 61,
+      categoryId: 4,
+      subcategoryId: 402,
+      nameAr: 'ماسك شعر avocat',
+      nameEn: 'Avocado Hair Mask',
+      subtitleAr: 'غنية بالفيتامينات والترطيب العميق.',
+      subtitleEn: 'Rich in vitamins and deep hydration.',
+      price: 140,
+      imageUrl: _Images.honeyHairOil,
+    ),
+    HomeDemoProduct(
+      id: 62,
+      categoryId: 4,
+      subcategoryId: 402,
+      nameAr: 'علاج التقصف twinning',
+      nameEn: 'Split Ends Treatment',
+      subtitleAr: 'لإصلاح أطراف الشعر المتقصفة.',
+      subtitleEn: 'Repair split ends.',
+      price: 100,
+      imageUrl: _Images.honeyHairOil,
+    ),
+    HomeDemoProduct(
+      id: 63,
+      categoryId: 4,
+      subcategoryId: 402,
+      nameAr: 'زيت الجوجوبا',
+      nameEn: 'Jojoba Oil',
+      subtitleAr: ' لترطيب فروة الرأس.',
+      subtitleEn: 'For scalp moisturizing.',
+      price: 85,
+      imageUrl: _Images.honeyHairOil,
+    ),
+    HomeDemoProduct(
+      id: 64,
+      categoryId: 5,
+      subcategoryId: 501,
+      nameAr: 'مناديل أطفال رطبة',
+      nameEn: 'Baby Wet Wipes',
+      subtitleAr: 'للتنظيف السريع والمنع.',
+      subtitleEn: 'Quick cleaning and refreshing.',
+      price: 45,
+      imageUrl: _Images.careLotion,
+    ),
   ];
 
   static List<HomeDemoProduct> get discounts => productsForIds(const [1, 2, 3]);
 
-  static List<HomeDemoProduct> get bestSelling =>
-      productsForIds(const [4, 5, 6, 7, 8, 9]);
+  static List<HomeDemoProduct> get bestSelling => productsForIds(const [4, 5, 6, 7, 8, 9]);
 
-  static List<HomeDemoProduct> get newArrivals =>
-      productsForIds(const [10, 11, 12, 13, 14, 15]);
+  static List<HomeDemoProduct> get newArrivals => productsForIds(const [10, 11, 12, 13, 14, 15]);
 
-  static List<HomeDemoProduct> get specialPackages =>
-      productsForIds(const [16, 17, 18, 19, 20]);
+  static List<HomeDemoProduct> get specialPackages => productsForIds(const [16, 17, 18, 19, 20]);
 
   static List<HomeDemoProduct> productsForIds(List<int> ids) {
     final map = {for (final product in allProducts) product.id: product};
@@ -820,31 +1259,21 @@ class HomeDemoData {
     return const [];
   }
 
-  static List<HomeDemoProduct> productsFor({
-    int? categoryId,
-    int? subcategoryId,
-  }) {
+  static List<HomeDemoProduct> productsFor({int? categoryId, int? subcategoryId}) {
     if (subcategoryId != null) {
-      return allProducts
-          .where((product) => product.subcategoryId == subcategoryId)
-          .toList();
+      return allProducts.where((product) => product.subcategoryId == subcategoryId).toList();
     }
     if (categoryId != null) {
-      return allProducts
-          .where((product) => product.categoryId == categoryId)
-          .toList();
+      return allProducts.where((product) => product.categoryId == categoryId).toList();
     }
     return allProducts;
   }
 
   static List<HomeDemoProduct> productsForBanner(int index) {
     switch (index) {
-      case 1:
-        return discounts;
-      case 2:
-        return bestSelling;
-      default:
-        return allProducts;
+      case 1: return discounts;
+      case 2: return bestSelling;
+      default: return allProducts;
     }
   }
 
@@ -854,38 +1283,24 @@ class HomeDemoData {
 class _Images {
   const _Images._();
 
-  static const cicastim =
-      'assets/products/Acm-Cicastim-Repair-Cream-20ml-400x400.webp';
-  static const depiwhite =
-      'assets/products/ACM-DEPIWHITE-CREAM-ADVANCED-40-ML-3-441x441.webp';
-  static const depiwhiteEye =
-      'assets/products/ACM-DEPIWHITE-EYE-CONTOUR-GEL-15ML-2-400x400.webp';
-  static const actiCollaAdvance =
-      'assets/products/ACTI-COLLA-ADVANCE-30-SACHETS-400x400.webp';
-  static const actiCollaC =
-      'assets/products/ACTI-COLLA-C-30-SACHETS-1-400x400.webp';
+  static const cicastim = 'assets/products/Acm-Cicastim-Repair-Cream-20ml-400x400.webp';
+  static const depiwhite = 'assets/products/ACM-DEPIWHITE-CREAM-ADVANCED-40-ML-3-441x441.webp';
+  static const depiwhiteEye = 'assets/products/ACM-DEPIWHITE-EYE-CONTOUR-GEL-15ML-2-400x400.webp';
+  static const actiCollaAdvance = 'assets/products/ACTI-COLLA-ADVANCE-30-SACHETS-400x400.webp';
+  static const actiCollaC = 'assets/products/ACTI-COLLA-C-30-SACHETS-1-400x400.webp';
   static const actinPlus = 'assets/products/ACTIN-PLUS-30-SACHETS-441x441.webp';
-  static const alejonHairLoss =
-      'assets/products/ALEJON-ANT-HAIR-LOSS-15VIALS-400x400.webp';
-  static const careLotion =
-      'assets/products/Care-Lotion-220-570x570-1-441x441.webp';
+  static const alejonHairLoss = 'assets/products/ALEJON-ANT-HAIR-LOSS-15VIALS-400x400.webp';
+  static const careLotion = 'assets/products/Care-Lotion-220-570x570-1-441x441.webp';
   static const diclac = 'assets/products/DICLAC-150MG-ID-20-TAB-400x400.webp';
-  static const essenceMascara =
-      'assets/products/Essence-Lash-PRINCESS-curl-amp-volume-mascara-400x400.webp';
-  static const fatroxim =
-      'assets/products/fatroxim-550mg-30-tabمحلى-400x400.webp';
+  static const essenceMascara = 'assets/products/Essence-Lash-PRINCESS-curl-amp-volume-mascara-400x400.webp';
+  static const fatroxim = 'assets/products/fatroxim-550mg-30-tabمحلى-400x400.webp';
   static const forxiga = 'assets/products/FORXIGA-5MG-28TAB-400x400.webp';
   static const fawarFruit = 'assets/products/FAWAR-FRUIT-6SACHETS-400x400.webp';
-  static const honeyHairOil =
-      'assets/products/HONEY-DEEP-MOIST-HAIR-OIL-100-ML-400x400.webp';
-  static const honeyCleansingOil =
-      'assets/products/HONEY-CLEANSING-OIL-180-ML-400x400.webp';
+  static const honeyHairOil = 'assets/products/HONEY-DEEP-MOIST-HAIR-OIL-100-ML-400x400.webp';
+  static const honeyCleansingOil = 'assets/products/HONEY-CLEANSING-OIL-180-ML-400x400.webp';
   static const bispyller = 'assets/products/New-Project-12-1-441x441.webp';
-  static const adidasShower =
-      'assets/products/New-Project-2026-09-23T093411.830-441x441.webp';
-  static const babyBath =
-      'assets/products/New-Project-2026-10-15T122505.250-441x441.webp';
-  static const cradleCap =
-      'assets/products/New-Project-2026-10-15T134715.591-441x441.webp';
+  static const adidasShower = 'assets/products/New-Project-2026-09-23T093411.830-441x441.webp';
+  static const babyBath = 'assets/products/New-Project-2026-10-15T122505.250-441x441.webp';
+  static const cradleCap = 'assets/products/New-Project-2026-10-15T134715.591-441x441.webp';
   static const collagenC = 'assets/products/New-Project-74-1-441x441.webp';
 }

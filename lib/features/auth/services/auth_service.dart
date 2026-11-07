@@ -37,9 +37,30 @@ class AuthService {
     String confirmPassword,
   ) async {}
 
-  Future<void> logout() => secureStorageHelper.delete('token');
+  Future<void> logout() async {
+    try {
+      await _dio.post('/api/logout');
+    } catch (_) {}
+    await secureStorageHelper.delete('token');
+  }
 
   Future<void> saveFCMtoken() async {}
 
-  Future<void> deleteAccount() async {}
+  Future<void> deleteAccount() async {
+    final response = await _dio.post('/api/user/delete-account');
+    final data = response.data;
+    if (data is Map) {
+      final message =
+          data['message']?.toString() ?? data['error']?.toString() ?? '';
+      if (message.toLowerCase().startsWith('error')) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+          message: message,
+        );
+      }
+    }
+    await secureStorageHelper.delete('token');
+  }
 }

@@ -181,11 +181,10 @@ class _ProductDetailsViewState extends State<ProductDetailsView> {
                   body: CustomScrollView(
                     slivers: [
                       SliverAppBar(
-                        backgroundColor: Colors.white,
+                        backgroundColor: const Color(0xFFF5FAFD),
                         pinned: true,
                         elevation: 0,
                         surfaceTintColor: Colors.transparent,
-                        centerTitle: true,
                         leading: Padding(
                           padding: const EdgeInsets.all(8),
                           child: _circleButton(
@@ -195,14 +194,6 @@ class _ProductDetailsViewState extends State<ProductDetailsView> {
                               color: AppColors.darkColor,
                             ),
                             onTap: _goBack,
-                          ),
-                        ),
-                        title: Text(
-                          S.of(context).product_details,
-                          style: AppTextStyles.noto16w400.copyWith(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.darkColor,
                           ),
                         ),
                         actions: [
@@ -242,126 +233,163 @@ class _ProductDetailsViewState extends State<ProductDetailsView> {
                       ),
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product.name,
-                                style: AppTextStyles.noto24w500.copyWith(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.darkColor,
-                                ),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(0xFFE6EEF5),
                               ),
-                              const SizedBox(height: 10),
-                              GestureDetector(
-                                onTap:
-                                    () => _showAllReviews(context, product.id),
-                                child: Row(
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      Icons.star_rounded,
-                                      color: Color(0xFFFFC107),
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${product.rate}',
-                                      style: AppTextStyles.noto14w400.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.darkColor,
+                                    Expanded(
+                                      child: Text(
+                                        product.name,
+                                        style: AppTextStyles.noto24w500
+                                            .copyWith(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.darkColor,
+                                            ),
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '(${product.ratingsCount})',
-                                      style: AppTextStyles.noto14w400.copyWith(
-                                        color: AppColors.grey,
-                                      ),
-                                    ),
+                                    const SizedBox(width: 8),
+                                    _StockChip(inStock: stock > 0),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
+                                const SizedBox(height: 10),
+                                GestureDetector(
+                                  onTap: () =>
+                                      _showAllReviews(context, product.id),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.star_rounded,
+                                        color: Color(0xFFFFC107),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${product.rate}',
+                                        style: AppTextStyles.noto14w400
+                                            .copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.darkColor,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '(${product.ratingsCount})',
+                                        style: AppTextStyles.noto14w400
+                                            .copyWith(color: AppColors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryColor.withOpacity(
+                                      0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '$price ${S.of(context).currency}',
+                                        style: AppTextStyles.noto24w500
+                                            .copyWith(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.primaryColor,
+                                            ),
+                                      ),
+                                      if (hasDiscount) ...[
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          '${numberFormat.format(originalPrice)} ${S.of(context).currency}',
+                                          style: AppTextStyles.noto16w400
+                                              .copyWith(
+                                                fontSize: 13,
+                                                color: AppColors.gray,
+                                                decoration:
+                                                    TextDecoration.lineThrough,
+                                              ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                if (product.availableSizes.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
                                   Text(
-                                    '$price ${S.of(context).currency}',
-                                    style: AppTextStyles.noto24w500.copyWith(
-                                      fontSize: 22,
+                                    S.of(context).size,
+                                    style: AppTextStyles.noto14w400.copyWith(
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.primaryColor,
+                                      color: AppColors.grey,
+                                      fontSize: 13,
                                     ),
                                   ),
-                                  if (hasDiscount) ...[
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      '${numberFormat.format(originalPrice)} ${S.of(context).currency}',
-                                      style: AppTextStyles.noto16w400.copyWith(
-                                        fontSize: 14,
-                                        color: AppColors.gray,
-                                        decoration: TextDecoration.lineThrough,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              if (product.availableSizes.isNotEmpty) ...[
-                                const SizedBox(height: 18),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children:
-                                      product.availableSizes.map((size) {
-                                        final isSelected =
-                                            size.id == currentSize?.id;
-                                        return GestureDetector(
-                                          onTap:
-                                              () => setState(
-                                                () => selectedSize = size,
-                                              ),
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 180,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 10,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  isSelected
-                                                      ? AppColors.primaryColor
-                                                      : Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color:
-                                                    isSelected
-                                                        ? AppColors.primaryColor
-                                                        : AppColors.borderColor,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              size.size ?? '',
-                                              style: AppTextStyles.noto14w400
-                                                  .copyWith(
-                                                    fontWeight: FontWeight.w600,
-                                                    color:
-                                                        isSelected
-                                                            ? Colors.white
-                                                            : AppColors
-                                                                .darkColor,
-                                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: product.availableSizes.map((
+                                      size,
+                                    ) {
+                                      final isSelected =
+                                          size.id == currentSize?.id;
+                                      return GestureDetector(
+                                        onTap: () => setState(
+                                          () => selectedSize = size,
+                                        ),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 180,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? AppColors.primaryColor
+                                                : const Color(0xFFF3F7FB),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
                                             ),
                                           ),
-                                        );
-                                      }).toList(),
-                                ),
+                                          child: Text(
+                                            size.size ?? '',
+                                            style: AppTextStyles.noto14w400
+                                                .copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : AppColors.darkColor,
+                                                ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -382,16 +410,10 @@ class _ProductDetailsViewState extends State<ProductDetailsView> {
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primaryColor.withOpacity(
-                                    0.06,
-                                  ),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(0xFFE6EEF5),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,6 +586,35 @@ class _ProductDetailsViewState extends State<ProductDetailsView> {
   }
 }
 
+class _StockChip extends StatelessWidget {
+  const _StockChip({required this.inStock});
+
+  final bool inStock;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final color = inStock ? AppColors.teal : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        inStock
+            ? (isAr ? 'متوفر' : 'In stock')
+            : (isAr ? 'غير متوفر' : 'Out of stock'),
+        style: AppTextStyles.noto14w400.copyWith(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
 class _ProductReviewsSection extends StatelessWidget {
   const _ProductReviewsSection({required this.onShowAll});
 
@@ -576,14 +627,8 @@ class _ProductReviewsSection extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryColor.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE6EEF5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

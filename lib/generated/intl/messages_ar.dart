@@ -833,6 +833,11 @@ class MessageLookup extends MessageLookupByLibrary {
       "تم التوصيل",
     ),
     "order_status_pending": MessageLookupByLibrary.simpleMessage("تم الطلب"),
+    "order_status_picking": MessageLookupByLibrary.simpleMessage("جديد - قيد الجمع"),
+    "order_status_packed": MessageLookupByLibrary.simpleMessage("جديد - معبأ"),
+    "order_status_confirmed": MessageLookupByLibrary.simpleMessage("مؤكد"),
+    "order_status_on_delivery": MessageLookupByLibrary.simpleMessage("جديد - في الطريق"),
+    "order_status_compiled": MessageLookupByLibrary.simpleMessage("جديد - مدمج"),
     "order_status_preparing": MessageLookupByLibrary.simpleMessage(
       "جاري التجهيز",
     ),
@@ -1333,5 +1338,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "yousif": MessageLookupByLibrary.simpleMessage("يوسف"),
     "youtube": MessageLookupByLibrary.simpleMessage("يوتيوب"),
     "zainCach": MessageLookupByLibrary.simpleMessage("فودافون كاش"),
+    "added": MessageLookupByLibrary.simpleMessage("تمت الإضافة"),
+    "order_status_completed": MessageLookupByLibrary.simpleMessage("مكتمل"),
   };
 }

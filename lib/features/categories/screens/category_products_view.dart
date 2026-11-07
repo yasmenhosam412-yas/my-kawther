@@ -272,8 +272,8 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
           if (state is CategoryProductsLoaded) {
             final products = state.categoryProducts;
 
-            if (_allProducts.isEmpty) {
-              _allProducts = products;
+            if (!state.isLoadMore || _allProducts.isEmpty) {
+              _allProducts = List<CategoryProductsData>.from(products);
             } else {
               for (var product in products) {
                 if (!_allProducts.any((p) => p.id == product.id)) {

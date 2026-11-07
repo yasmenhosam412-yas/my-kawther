@@ -124,7 +124,10 @@ class OrdersCubit extends Cubit<OrdersState> {
         images,
       );
 
-      final refundOrder = RefundOrder.fromJson(response['data']);
+      final payload = response['data'] is Map ? response['data'] : response;
+      final refundOrder = RefundOrder.fromJson(
+        Map<String, dynamic>.from(payload as Map),
+      );
       emit(OrdersRefunded(refundOrder: refundOrder));
     } on DioException catch (e) {
       emit(OrdersError(Errors.fromDioError(e)));
@@ -161,9 +164,9 @@ class OrdersCubit extends Cubit<OrdersState> {
     return ordersServices.orderPaymentStatus(id);
   }
 
-  Future<String> cancelReturn(int id) async {
+  Future<String> cancelReturn(int id, {bool refreshList = true}) async {
     final message = await ordersServices.cancelReturn(id);
-    await getAllReturns();
+    if (refreshList) await getAllReturns();
     return message;
   }
 

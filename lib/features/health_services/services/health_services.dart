@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:elkawther/core/services/dio_service.dart';
+import 'package:elkawther/core/services/secure_storage_helper.dart';
 import 'package:elkawther/features/health_services/data/health_local_calc.dart';
 import 'package:elkawther/features/health_services/models/measures.dart';
 import 'package:elkawther/features/health_services/models/month_response.dart';
@@ -14,10 +15,25 @@ import 'package:elkawther/features/health_services/models/weight_body.dart';
 /// Content-Type are already on the shared Dio instance. Reading the token
 /// again here would hit secure storage on every call and could send
 /// `Bearer null` when the session is empty.
+class HealthLoginRequiredException implements Exception {
+  const HealthLoginRequiredException();
+
+  @override
+  String toString() => 'Login required';
+}
+
 class HealthService {
   final Dio _dio = DioService.dio;
 
+  Future<void> _requireLogin() async {
+    final token = await SecureStorageHelper().safeRead('token');
+    if (token == null || token.trim().isEmpty) {
+      throw const HealthLoginRequiredException();
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getWeightHistory() async {
+    await _requireLogin();
     final response = await _dio.get('/api/user/health/weight');
     return _records(response.data);
   }
@@ -27,6 +43,7 @@ class HealthService {
     required double height,
     required String unit,
   }) async {
+    await _requireLogin();
     final response = await _dio.post(
       '/api/user/health/body-weight',
       data: {'weight': weight, 'height': height, 'unit': unit},
@@ -39,6 +56,7 @@ class HealthService {
     required int cycleLength,
     required int periodLength,
   }) async {
+    await _requireLogin();
     final local = _localPeriod(
       startDayOfCycle: startDayOfCycle,
       cycleLength: cycleLength,
@@ -65,6 +83,7 @@ class HealthService {
   }
 
   Future<MonthResponse> currentPeriodData() async {
+    await _requireLogin();
     final response = await _dio.get('/api/user/health/ovulation/current');
     final raw = response.data;
     if (raw is! Map) {
@@ -88,6 +107,7 @@ class HealthService {
   Future<PregnancyCalcModel> getPreganacyCalcData({
     required String lastPeriodDate,
   }) async {
+    await _requireLogin();
     final response = await _dio.post(
       '/api/user/health/calculatePregnancy',
       data: {'last_period_date': lastPeriodDate},
@@ -98,6 +118,7 @@ class HealthService {
   }
 
   Future<PregnancyResultModel> getPreganacyCalcCurrentData() async {
+    await _requireLogin();
     final response = await _dio.get('/api/user/health/CurrentPregnancyStage');
     return PregnancyResultModel.fromJson(
       _modelMap(response.data, _isPregnancyResult),
@@ -110,6 +131,7 @@ class HealthService {
     required String conditionType,
     required String measuredAt,
   }) async {
+    await _requireLogin();
     final response = await _dio.post(
       '/api/user/health/blood-pressure',
       data: {
@@ -127,6 +149,7 @@ class HealthService {
   }
 
   Future<List<BloodPressureDataFetched>> getBloodMesureDataFetched() async {
+    await _requireLogin();
     final response = await _dio.get('/api/user/health/blood-pressure');
     return _decodeList(response.data, BloodPressureDataFetched.fromJson);
   }
@@ -136,6 +159,7 @@ class HealthService {
     required String conditionType,
     required String measuredAt,
   }) async {
+    await _requireLogin();
     final response = await _dio.post(
       '/api/user/health/blood-sugar',
       data: {
@@ -152,6 +176,7 @@ class HealthService {
   }
 
   Future<List<BloodSugarDataFetched>> fetchBloodSugarMeasureData() async {
+    await _requireLogin();
     final response = await _dio.get('/api/user/health/blood-sugar');
     return _decodeList(response.data, BloodSugarDataFetched.fromJson);
   }
@@ -161,6 +186,7 @@ class HealthService {
     required String babyGender,
     required String babyBirth,
   }) async {
+    await _requireLogin();
     final response = await _dio.post(
       '/api/user/health/child',
       data: {
@@ -177,6 +203,7 @@ class HealthService {
   }
 
   Future<ChildrenResponse> getVaccinesFullDataChildren() async {
+    await _requireLogin();
     final response = await _dio.get('/api/user/health/child/vaccines');
     return _decode(
       response.data,
@@ -189,6 +216,7 @@ class HealthService {
     required int vacID,
     bool isCompleted = true,
   }) async {
+    await _requireLogin();
     final response = await _dio.patch(
       '/api/user/health/vaccines/$vacID/complete',
       data: {'is_completed': isCompleted},
@@ -201,6 +229,7 @@ class HealthService {
   }
 
   Future<String> deleteChild(int childId) async {
+    await _requireLogin();
     final response = await _dio.delete('/api/user/health/child/$childId');
     final body = response.data;
     if (body is! Map) return '';

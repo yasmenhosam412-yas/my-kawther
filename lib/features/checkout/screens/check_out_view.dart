@@ -5,7 +5,7 @@ import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/theme/app_padding.dart';
 import 'package:elkawther/core/widgets/app_snack_bar.dart';
-import 'package:elkawther/features/checkout/data/checkout_local_store.dart';
+import 'package:elkawther/features/checkout/models/checkout_payment_method.dart';
 import 'package:elkawther/features/checkout/widgets/address.dart';
 import 'package:elkawther/features/checkout/widgets/payment_option_zain.dart';
 import 'package:elkawther/features/addresses/cubit/addresses_cubit.dart';
@@ -34,16 +34,12 @@ class _CheckOutViewState extends State<CheckOutView> {
   final notesController = TextEditingController();
   final promoCodeController = TextEditingController();
   final pointsController = TextEditingController();
-  final numberController = TextEditingController(
-    text: CheckoutLocalStore.zainNumber,
-  );
-  final creditController = TextEditingController(
-    text: CheckoutLocalStore.qiCard,
-  );
   late final TextEditingController phoneController;
   AddressModel? _selectedAddress;
   File? image;
-  String transferMethod = 'cash';
+  String transferMethod = '';
+  List<CheckoutPaymentMethod> _paymentMethods = const [];
+  bool _paymentsLoading = true;
   LoyaltyAccount? _loyalty;
 
   @override
@@ -61,7 +57,25 @@ class _CheckOutViewState extends State<CheckOutView> {
         profile.getDeliveryPricesAndCities();
       }
       _loadLoyalty();
+      _loadPaymentMethods();
     });
+  }
+
+  Future<void> _loadPaymentMethods() async {
+    try {
+      final methods = await fetchCheckoutPaymentMethods();
+      if (!mounted) return;
+      setState(() {
+        _paymentMethods = methods;
+        _paymentsLoading = false;
+        if (methods.isNotEmpty &&
+            !methods.any((method) => method.code == transferMethod)) {
+          transferMethod = methods.first.code;
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _paymentsLoading = false);
+    }
   }
 
   Future<void> _loadLoyalty() async {
@@ -77,8 +91,6 @@ class _CheckOutViewState extends State<CheckOutView> {
     notesController.dispose();
     promoCodeController.dispose();
     pointsController.dispose();
-    numberController.dispose();
-    creditController.dispose();
     phoneController.dispose();
     super.dispose();
   }
@@ -264,8 +276,8 @@ class _CheckOutViewState extends State<CheckOutView> {
                     _sectionHeader(2, S.of(context).paymentTool),
                     const SizedBox(height: 10),
                     PaymentMethodWidget(
-                      numberController: numberController,
-                      creditController: creditController,
+                      methods: _paymentMethods,
+                      loading: _paymentsLoading,
                       onImagePicked: (picked) => setState(() => image = picked),
                       onPaymentSelected:
                           (method) => setState(() => transferMethod = method),
@@ -576,7 +588,19 @@ class _CheckOutViewState extends State<CheckOutView> {
     required double delivery,
   }) {
     if (context.read<CartCubit>().cart.isEmpty) return;
-    if (transferMethod != 'cash' && image == null) {
+    CheckoutPaymentMethod? payment;
+    for (final method in _paymentMethods) {
+      if (method.code == transferMethod) {
+        payment = method;
+        break;
+      }
+    }
+    final requiresReceipt = payment?.requiresReceipt == true;
+    if (transferMethod.isEmpty) {
+      AppSnackBar.warning(S.of(context).paymentTool);
+      return;
+    }
+    if (requiresReceipt && image == null) {
       AppSnackBar.warning(S.of(context).upload_image_here_please);
       return;
     }

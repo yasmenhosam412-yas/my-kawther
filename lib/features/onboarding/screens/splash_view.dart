@@ -142,149 +142,123 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFEAF7FD), Colors.white, Color(0xFFF2FBF9)],
-          ),
-        ),
-        child: Stack(
-          children: [
-            const Positioned(
-              top: -90,
-              right: -70,
-              child: _BackgroundOrb(size: 250, color: Color(0x220B76B9)),
-            ),
-            const Positioned(
-              bottom: -100,
-              left: -85,
-              child: _BackgroundOrb(size: 260, color: Color(0x1F06A786)),
-            ),
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final logoSize = math.min(
-                    200.0,
-                    math.min(
-                      constraints.maxWidth * 0.52,
-                      constraints.maxHeight * 0.34,
-                    ),
-                  );
+    final viewPadding = MediaQuery.paddingOf(context);
 
-                  return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                        minWidth: constraints.maxWidth,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 24,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                AnimatedBuilder(
-                                  animation: _pulseAnimation,
-                                  builder:
-                                      (context, child) => Transform.scale(
-                                        scale: _pulseAnimation.value,
-                                        child: child,
-                                      ),
-                                  child: Container(
-                                    width: logoSize + 44,
-                                    height: logoSize + 44,
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(48),
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.8),
-                                        width: 2,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.primaryColor
-                                              .withOpacity(0.14),
-                                          blurRadius: 40,
-                                          offset: const Offset(0, 18),
-                                        ),
-                                      ],
-                                    ),
-                                    child: PharmacyLogo(size: logoSize),
-                                  ),
-                                ),
-                                const SizedBox(height: 34),
-                                Text(
-                                  isArabic
-                                      ? 'صيدلية الكوثر'
-                                      : 'El Kawther Pharmacy',
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.headlineLarge.copyWith(
-                                    color: AppColors.darkColor,
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  isArabic
-                                      ? 'رعايتك الصحية، بكل عناية'
-                                      : 'Your health, cared for every day',
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.noto16w400.copyWith(
-                                    color: AppColors.grey,
-                                    fontSize: 15,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 48),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 112,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(99),
-                                    child: const LinearProgressIndicator(
-                                      minHeight: 4,
-                                      backgroundColor: Color(0xFFDCEEF5),
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.primaryColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  isArabic
-                                      ? 'لحظات ونكون معك'
-                                      : 'Getting things ready',
-                                  style: AppTextStyles.noto14w400.copyWith(
-                                    color: AppColors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF085A94),
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF085A94),
+                AppColors.primaryColor,
+                Color(0xFF0C8A78),
+              ],
             ),
-          ],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const Positioned(
+                top: -80,
+                right: -60,
+                child: _BackgroundOrb(size: 220, color: Color(0x22FFFFFF)),
+              ),
+              const Positioned(
+                bottom: -90,
+                left: -70,
+                child: _BackgroundOrb(size: 240, color: Color(0x18FFFFFF)),
+              ),
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final logoSize = math.min(
+                      168.0,
+                      math.min(
+                        constraints.maxWidth * 0.46,
+                        constraints.maxHeight * 0.28,
+                      ),
+                    );
+
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        28,
+                        viewPadding.top + 28,
+                        28,
+                        viewPadding.bottom + 28,
+                      ),
+                      child: Column(
+                        children: [
+                          const Spacer(),
+                          AnimatedBuilder(
+                            animation: _pulseAnimation,
+                            builder: (context, child) => Transform.scale(
+                              scale: _pulseAnimation.value,
+                              child: child,
+                            ),
+                            child: Container(
+                              width: logoSize + 28,
+                              height: logoSize + 28,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.45),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: PharmacyLogo(size: logoSize),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          Text(
+                            isArabic
+                                ? 'رعايتك الصحية، بكل عناية'
+                                : 'Your health, cared for every day',
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.noto16w400.copyWith(
+                              color: Colors.white.withOpacity(0.92),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              height: 1.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          SizedBox(
+                            width: 120,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(99),
+                              child: LinearProgressIndicator(
+                                minHeight: 4,
+                                backgroundColor: Colors.white.withOpacity(0.22),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            isArabic
+                                ? 'لحظات ونكون معك'
+                                : 'Getting things ready',
+                            style: AppTextStyles.noto14w400.copyWith(
+                              color: Colors.white.withOpacity(0.78),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

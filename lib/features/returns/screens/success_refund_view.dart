@@ -1,73 +1,77 @@
-import 'package:elkawther/core/theme/app_text_style.dart';
-import 'package:flutter/material.dart';
-
-import 'package:elkawther/generated/assets.dart';
-import 'package:elkawther/generated/l10n.dart';
-import 'package:elkawther/core/theme/app_padding.dart';
-import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/routes/routes.dart';
-import 'package:elkawther/core/widgets/custom_elevated_button.dart';
+import 'package:elkawther/core/theme/app_colors.dart';
+import 'package:elkawther/core/theme/app_text_style.dart';
+import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
+import 'package:elkawther/generated/l10n.dart';
+import 'package:flutter/material.dart';
 
 class SuccessRefundView extends StatelessWidget {
   const SuccessRefundView({super.key});
 
+  void _home(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, Routes.home, (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          Routes.home,
-          (route) => false,
-        );
-        return true;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _home(context);
       },
-      child: Scaffold(
-        backgroundColor: Colors.white,
+      child: ProfileScaffold(
+        title: S.of(context).returns,
+        showBack: false,
+        bottom: ProfilePrimaryButton(
+          title: S.of(context).back_to_home,
+          onPressed: () => _home(context),
+        ),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(AppPadding.large),
+            padding: const EdgeInsets.all(28),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
-                  child: Image.asset(
-                    Assets.imagesSuccess,
-                    width: 200,
-                    height: 200,
+                Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Color(0xFF059669),
+                    size: 40,
                   ),
                 ),
-                const SizedBox(height: AppPadding.small),
+                const SizedBox(height: 16),
                 Text(
-                  textAlign: TextAlign.center,
                   S.of(context).request_submitted_successfully,
-                  style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                    color: Colors.black,
-                    fontSize: 22,
-                  ),
-                ),
-                const SizedBox(height: AppPadding.small),
-                Text(
                   textAlign: TextAlign.center,
-                  S.of(context).we_will_reply_asap,
-                  style: AppTextStyles.ibmPlexSans16w500.copyWith(
-                    color: Colors.black,
-                    fontSize: 20,
+                  style: AppTextStyles.noto16w400.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: AppColors.darkColor,
                   ),
                 ),
-                const SizedBox(height: AppPadding.large),
-
-                CustomElevatedButton(
+                const SizedBox(height: 8),
+                Text(
+                  S.of(context).we_will_reply_asap,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
                   onPressed: () {
                     Navigator.pushNamedAndRemoveUntil(
                       context,
-                      Routes.home,
+                      Routes.returns,
                       (route) => false,
-                    ); // Go to home screen
+                    );
                   },
-                  backgroundColor: AppColors.primaryColor,
-                  title: S.of(context).back_to_home,
+                  child: Text(isAr ? 'عرض المرتجعات' : 'View returns'),
                 ),
               ],
             ),

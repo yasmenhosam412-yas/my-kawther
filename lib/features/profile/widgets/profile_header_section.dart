@@ -25,142 +25,220 @@ class ProfileHeaderSection extends StatelessWidget {
         final isLoading =
             state is ProfileUserLoadingState ||
             state is ProfileCubitInitialState;
-        final isAr = Localizations.localeOf(context).languageCode == 'ar';
         final name = isLoading ? 'Account name' : (user?.name ?? '');
         final email = isLoading ? 'name@email.com' : (user?.email ?? '');
         final phone = isLoading ? '01000000000' : (user?.phone ?? '');
 
         return Column(
           children: [
-            Skeletonizer(
-              enabled: isLoading,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryColor.withOpacity(0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
+            Container(
+              width: double.infinity,
+              clipBehavior: Clip.antiAlias,
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 36),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF085A94),
+                    AppColors.primaryColor,
+                    Color(0xFF1A8FCF),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: AppColors.primaryColor.withOpacity(
-                        0.12,
-                      ),
-                      child: Text(
-                        getInitial(name),
-                        style: AppTextStyles.noto16w400.copyWith(
-                          color: AppColors.primaryColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isLoading
-                                ? name
-                                : '${S.of(context).hello}! $name',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(32),
+                ),
+              ),
+              child: Stack(
+                children: [
+                  const Positioned(
+                    right: -36,
+                    top: -28,
+                    child: _HeaderBlob(size: 140),
+                  ),
+                  const Positioned(
+                    left: -24,
+                    bottom: -10,
+                    child: _HeaderBlob(size: 96),
+                  ),
+                  Skeletonizer(
+                    enabled: isLoading,
+                    child: Column(
+                      children: [
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            S.of(context).profile,
                             style: AppTextStyles.noto16w400.copyWith(
-                              fontSize: 16,
+                              fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.darkColor,
+                              color: Colors.white,
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.22),
+                          ),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Colors.white,
+                            child: Text(
+                              getInitial(name),
+                              style: AppTextStyles.noto16w400.copyWith(
+                                color: AppColors.primaryColor,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          isLoading
+                              ? name
+                              : '${S.of(context).hello}! $name',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.noto16w400.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (isLoading || email.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             email,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
                             style: AppTextStyles.noto14w400.copyWith(
-                              color: AppColors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            phone,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.noto14w400.copyWith(
-                              color: AppColors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            isAr
-                                ? 'راجع بيانات حسابك'
-                                : 'Review your account details',
-                            style: AppTextStyles.noto14w400.copyWith(
-                              color: AppColors.grey,
-                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.82),
+                              fontSize: 13,
                             ),
                           ),
                         ],
+                        if (isLoading || phone.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.16),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              phone,
+                              style: AppTextStyles.noto14w400.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Transform.translate(
+              offset: const Offset(0, -22),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE6EEF5)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryColor.withOpacity(0.10),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
+                    ],
+                  ),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Assets.iconsOrders2,
+                            label: S.of(context).orders,
+                            color: AppColors.primaryColor,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              Routes.myOrders,
+                              arguments: false,
+                            ),
+                          ),
+                        ),
+                        const VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: Color(0xFFE8EEF3),
+                        ),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Assets.iconsMyPoints2,
+                            label: S.of(context).my_points,
+                            color: AppColors.teal,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              Routes.profilePoints,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-            if (state is ProfileUserErrorState) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  state.message.localizedMessage(context),
-                  style: AppTextStyles.noto14w400.copyWith(
-                    color: Colors.red.shade700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickAction(
-                    icon: Assets.iconsOrders2,
-                    label: S.of(context).orders,
-                    color: AppColors.primaryColor,
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      Routes.myOrders,
-                      arguments: false,
+            if (state is ProfileUserErrorState)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    state.message.localizedMessage(context),
+                    style: AppTextStyles.noto14w400.copyWith(
+                      color: Colors.red.shade700,
+                      fontSize: 12,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Assets.iconsMyPoints2,
-                    label: S.of(context).my_points,
-                    color: AppColors.teal,
-                    onTap: () =>
-                        Navigator.pushNamed(context, Routes.profilePoints),
-                  ),
-                ),
-              ],
-            ),
+              ),
           ],
         );
       },
+    );
+  }
+}
+
+class _HeaderBlob extends StatelessWidget {
+  const _HeaderBlob({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(0.08),
+      ),
     );
   }
 }
@@ -181,32 +259,41 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: 56,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SvgPicture.asset(
-                icon,
-                width: 20,
-                height: 20,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  icon,
+                  width: 20,
+                  height: 20,
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: AppTextStyles.noto14w400.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.noto14w400.copyWith(
+                    color: AppColors.darkColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],

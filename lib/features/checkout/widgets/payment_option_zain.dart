@@ -5,21 +5,21 @@ import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/widgets/image_upload_box.dart';
-import 'package:elkawther/features/checkout/data/checkout_local_store.dart';
+import 'package:elkawther/features/checkout/models/checkout_payment_method.dart';
 import 'package:elkawther/features/profile/widgets/profile_scaffold.dart';
 
 class PaymentMethodWidget extends StatefulWidget {
   final Function(File)? onImagePicked;
   final Function(String)? onPaymentSelected;
-  final TextEditingController? numberController;
-  final TextEditingController? creditController;
+  final List<CheckoutPaymentMethod> methods;
+  final bool loading;
 
   const PaymentMethodWidget({
     super.key,
     this.onImagePicked,
     this.onPaymentSelected,
-    this.numberController,
-    this.creditController,
+    this.methods = const [],
+    this.loading = false,
   });
 
   @override
@@ -27,26 +27,32 @@ class PaymentMethodWidget extends StatefulWidget {
 }
 
 class PaymentMethodWidgetState extends State<PaymentMethodWidget> {
-  late String _selectedPayment;
-  late TextEditingController number;
-  late TextEditingController credit;
+  String _selectedPayment = '';
   File? _pickedImage;
 
   @override
   void initState() {
     super.initState();
-    number = widget.numberController ??
-        TextEditingController(text: CheckoutLocalStore.zainNumber);
-    credit = widget.creditController ??
-        TextEditingController(text: CheckoutLocalStore.qiCard);
-    _selectedPayment = 'cash';
+    _syncSelection(widget.methods);
   }
 
   @override
-  void dispose() {
-    if (widget.numberController == null) number.dispose();
-    if (widget.creditController == null) credit.dispose();
-    super.dispose();
+  void didUpdateWidget(PaymentMethodWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.methods != widget.methods) {
+      _syncSelection(widget.methods);
+    }
+  }
+
+  void _syncSelection(List<CheckoutPaymentMethod> methods) {
+    if (methods.isEmpty) return;
+    final exists = methods.any((method) => method.code == _selectedPayment);
+    if (exists) return;
+    final code = methods.first.code;
+    _selectedPayment = code;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onPaymentSelected?.call(code);
+    });
   }
 
   Future<void> _pickImage() async {
@@ -69,63 +75,80 @@ class PaymentMethodWidgetState extends State<PaymentMethodWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final selected = _selectedPayment;
+    CheckoutPaymentMethod? selected;
+    for (final method in widget.methods) {
+      if (method.code == _selectedPayment) {
+        selected = method;
+        break;
+      }
+    }
     return ProfileFormCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...[
-            (S.of(context).cash, 'cash', Icons.payments_rounded),
-            (
-              S.of(context).zainCach,
-              'zaincash',
-              Icons.account_balance_wallet_rounded,
-            ),
-            (S.of(context).qiCard, 'qicard', Icons.credit_card_rounded),
-          ].map(
-            (entry) => _paymentOption(
-              value: entry.$2,
-              label: entry.$1,
-              icon: entry.$3,
-              selected: selected == entry.$2,
-              onTap: () => _select(entry.$2),
-            ),
-          ),
-          if (selected == 'zaincash') ...[
-            const SizedBox(height: 14),
-            Text(
-              '${S.of(context).zainCach}: ${number.text}',
-              style: AppTextStyles.noto14w400.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkColor,
+      child: widget.loading
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primaryColor),
               ),
+            )
+          : widget.methods.isEmpty
+          ? Text(
+              Localizations.localeOf(context).languageCode == 'ar'
+                  ? 'لا توجد طرق دفع متاحة'
+                  : 'No payment methods available',
+              style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...widget.methods.map(
+                  (method) => _paymentOption(
+                    value: method.code,
+                    label: method.name,
+                    icon: method.icon,
+                    selected: selected?.code == method.code,
+                    onTap: () => _select(method.code),
+                  ),
+                ),
+                if (selected != null && selected.requiresReceipt) ...[
+                  const SizedBox(height: 14),
+                  if (selected.accountName != null)
+                    Text(
+                      selected.accountName!,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkColor,
+                      ),
+                    ),
+                  if (selected.accountNumber != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      selected.accountNumber!,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
+                  ],
+                  if (selected.instructions != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      selected.instructions!,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: AppColors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  ImageUploadBox(
+                    label: S.of(context).upload_image_here,
+                    image: _pickedImage,
+                    onTap: _pickImage,
+                    height: 140,
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 10),
-            ImageUploadBox(
-              label: S.of(context).upload_image_here,
-              image: _pickedImage,
-              onTap: _pickImage,
-              height: 140,
-            ),
-          ] else if (selected == 'qicard') ...[
-            const SizedBox(height: 14),
-            Text(
-              '${S.of(context).credit_card}: ${credit.text}',
-              style: AppTextStyles.noto14w400.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkColor,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ImageUploadBox(
-              label: S.of(context).upload_image_here,
-              image: _pickedImage,
-              onTap: _pickImage,
-              height: 140,
-            ),
-          ],
-        ],
-      ),
     );
   }
 

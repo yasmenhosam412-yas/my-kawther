@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:elkawther/core/widgets/app_snack_bar.dart';
+import 'package:elkawther/features/profile/data/app_settings.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:elkawther/generated/l10n.dart';
@@ -11,7 +12,9 @@ class BeautyConsultation extends StatelessWidget {
   const BeautyConsultation({super.key});
 
   Future<void> _openWhatsApp(BuildContext context) async {
-    final url = Uri.parse('https://wa.me/201098765432');
+    final link = AppSettings.instance.whatsAppUrl;
+    if (link == null) return;
+    final url = Uri.parse(link);
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {

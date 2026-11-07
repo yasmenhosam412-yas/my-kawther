@@ -17,6 +17,11 @@ class ProfileCubit extends Cubit<ProfileCubitState> {
   List<DeliveryPrice>? deliveryPrices;
   UserModel? userData;
 
+  void clearUser() {
+    userData = null;
+    emit(ProfileCubitInitialState());
+  }
+
   Future<void> getUserData() async {
     userData = null;
     emit(ProfileUserLoadingState());
@@ -76,20 +81,52 @@ class ProfileCubit extends Cubit<ProfileCubitState> {
     String? phone,
     BuildContext context,
   ) async {
-    emit(ProfileCubitLoadingState());
     try {
-      final model = await profileServices.editData(id, email, name, phone);
-      emit(ProfileCubitLoadedEditUSerDataState(model));
-      emit(ProfileEditSuccessState());
+      final updated = await profileServices.editData(id, email, name, phone);
+      final current = userData;
+      final model = UserModel(
+        id: updated != null && updated.id != 0 ? updated.id : id,
+        name: _updatedField(updated?.name, name, current?.name),
+        phone: _updatedField(updated?.phone, phone, current?.phone),
+        email: _updatedField(updated?.email, email, current?.email),
+        password: updated?.password ?? current?.password,
+        socialId: updated?.socialId ?? current?.socialId,
+        socialProvider: updated?.socialProvider ?? current?.socialProvider,
+        isVerified: updated?.isVerified ?? current?.isVerified ?? false,
+        otpCode: updated?.otpCode ?? current?.otpCode,
+        otpExpiresAt: updated?.otpExpiresAt ?? current?.otpExpiresAt,
+        createdAt: _updatedField(updated?.createdAt, null, current?.createdAt),
+        updatedAt: _updatedField(updated?.updatedAt, null, current?.updatedAt),
+      );
+      _applyUser(model);
     } catch (error) {
       if (context.mounted) {
         emit(
           ProfileEditErrorState(
-            message: Errors(message: _getErrorMessage(error)),
+            message: error is DioException
+                ? Errors.fromDioError(error)
+                : Errors(message: _getErrorMessage(error)),
           ),
         );
       }
     }
+  }
+
+  String _updatedField(String? fromResponse, String? submitted, String? current) {
+    if (fromResponse != null && fromResponse.trim().isNotEmpty) {
+      return fromResponse;
+    }
+    if (submitted != null && submitted.trim().isNotEmpty) return submitted;
+    return current ?? '';
+  }
+
+  void _applyUser(UserModel user) {
+    userData = user;
+    ProfileLocalStore.instance
+      ..name = user.name
+      ..email = user.email
+      ..phone = user.phone;
+    emit(ProfileUserLoadedState(user));
   }
 
   Future<void> changePassword(

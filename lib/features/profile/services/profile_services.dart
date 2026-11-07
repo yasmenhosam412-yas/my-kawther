@@ -4,6 +4,7 @@ import 'package:elkawther/features/profile/models/user_model.dart';
 
 import 'package:elkawther/core/services/dio_service.dart';
 import 'package:elkawther/core/services/secure_storage_helper.dart';
+import 'package:elkawther/features/profile/models/contact_message.dart';
 import 'package:elkawther/features/profile/models/points_response.dart';
 import 'package:elkawther/features/profile/models/profile_models.dart';
 import 'package:elkawther/features/profile/models/setting_response.dart';
@@ -184,7 +185,7 @@ class ProfileServices {
         .toList();
   }
 
-  Future<UserModel> editData(
+  Future<UserModel?> editData(
     int userId,
     String? email,
     String? name,
@@ -192,8 +193,12 @@ class ProfileServices {
   ) async {
     final token = await storageHelper.safeRead('token');
     final response = await _dio.put(
-      "/api/v1/user/update/$userId",
-      data: {"email": email, "name": name, "phone": phone},
+      "/api/user/update/$userId",
+      data: {
+        if (email != null) 'email': email,
+        if (name != null) 'name': name,
+        if (phone != null) 'phone': phone,
+      },
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -202,7 +207,26 @@ class ProfileServices {
       ),
     );
 
-    return UserModel.fromJson(response.data['data']);
+    return _userFromResponse(response.data);
+  }
+
+  UserModel? _userFromResponse(dynamic responseData) {
+    if (responseData is! Map) return null;
+    dynamic userData =
+        responseData['data'] ??
+        responseData['user'] ??
+        responseData['original'];
+    if (userData is Map && userData['user'] is Map) {
+      userData = userData['user'];
+    }
+    if (userData is! Map) userData = responseData;
+    if (!userData.containsKey('id') &&
+        !userData.containsKey('name') &&
+        !userData.containsKey('email') &&
+        !userData.containsKey('phone')) {
+      return null;
+    }
+    return UserModel.fromJson(Map<String, dynamic>.from(userData));
   }
 
   Future<String> changePass(String? pass, String? confirmPass) async {
@@ -226,23 +250,56 @@ class ProfileServices {
   }
 
   Future<String> contactUs(String name, String email, String message) async {
-    final token = await storageHelper.safeRead('token');
     final response = await _dio.post(
-      "/api/v1/user/contact-messages",
-      data: {"name": name, "email": email, "message": message},
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      ),
+      '/api/user/contact-messages',
+      data: {'name': name, 'email': email, 'message': message},
     );
-
-    if (response.data is Map && response.data['message'] != null) {
-      return response.data['message'];
-    } else {
-      throw Exception("Unexpected response format");
+    final body = response.data;
+    if (body is Map && body['message'] is String) {
+      return body['message'] as String;
     }
+    return '';
+  }
+
+  Future<List<ContactMessage>> getContactMessages() async {
+    final response = await _dio.get('/api/user/contact-messages');
+    return parseContactMessages(response.data);
+  }
+
+  Future<ContactMessage> getContactMessage(int id) async {
+    final response = await _dio.get('/api/user/contact-messages/$id');
+    return parseContactMessage(response.data);
+  }
+
+  Future<ContactReply?> replyToContactMessage(int id, String message) async {
+    final response = await _dio.post(
+      '/api/user/contact-messages/$id/replies',
+      data: {'body': message},
+    );
+    final raw = response.data;
+    if (raw is! Map) return null;
+    final body = Map<String, dynamic>.from(raw);
+    for (final key in ['data', 'reply', 'contact_reply']) {
+      final value = body[key];
+      if (value is Map && value['message'] is String) {
+        return ContactReply.fromJson(Map<String, dynamic>.from(value));
+      }
+    }
+    if (body['id'] != null && body['message'] is String) {
+      return ContactReply.fromJson(body);
+    }
+    return null;
+  }
+
+  Future<BrandSettings?> fetchBrandSettings() async {
+    final response = await _dio.get('/api/v1/user/settings');
+    final raw = response.data;
+    if (raw is! Map) {
+      throw const FormatException('Unexpected settings response');
+    }
+    final settings = SettingsResponse.fromJson(Map<String, dynamic>.from(raw));
+    if (settings.data.isEmpty) return null;
+    return settings.data.first;
   }
 
   Future<SettingsResponse> fetchSettings() async {
@@ -354,11 +411,12 @@ class ProfileServices {
     );
 
     final data = response.data;
-    final raw = data is List
-        ? data
-        : data is Map && data['data'] is List
-        ? data['data'] as List
-        : const [];
+    final raw =
+        data is List
+            ? data
+            : data is Map && data['data'] is List
+            ? data['data'] as List
+            : const [];
     return raw
         .whereType<Map>()
         .map((json) => DeliveryPrice.fromJson(Map<String, dynamic>.from(json)))
