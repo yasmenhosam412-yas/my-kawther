@@ -152,8 +152,8 @@ class HomeService {
   }
 
   Future<BrandsModel> getBrands({
-    int limit = 25,
-    int offset = 10,
+    int limit = 10,
+    int offset = 0,
     String sort = "ASC",
     String sortBy = "id",
   }) async {
@@ -286,9 +286,16 @@ class HomeService {
     String search = "",
   }) async {
     final response = await _dio.get(
-      "/api/v1/user/products/search?limit=10&offset=0&sort=ASC&sortBy=id&search$search",
+      "/api/v1/user/products/search",
+      queryParameters: {
+        "limit": limit,
+        "offset": offset,
+        "sort": sort,
+        "sortBy": sortBy,
+        "search": search,
+      },
     );
-    final List dataList = response.data['data'];
+    final List dataList = response.data['data'] ?? const [];
     return dataList.map((json) => ProductModel.fromJson(json)).toList();
   }
 

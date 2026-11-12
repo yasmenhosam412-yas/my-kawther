@@ -119,13 +119,19 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
       await _cubit.searchCategoryProductsPaginated(
         fetchId,
         _searchQuery,
-        limit: 50,
+        limit: 10,
+        offset: 0,
       );
     }
   }
 
   Future<void> _loadMore() async {
     if (_isLoadingMore) return;
+    final currentState = _cubit.state;
+    if (currentState is CategoryProductsLoaded && !currentState.hasMore) {
+      return;
+    }
+
     setState(() => _isLoadingMore = true);
 
     final fetchId = _selectedSubcategoryId ?? widget.categoryId;
@@ -133,10 +139,15 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
     if (_searchQuery.isEmpty) {
       await _cubit.fetchMoreCategoryProducts(fetchId, context, limit: 10);
     } else {
+      final loadedCount =
+          currentState is CategoryProductsLoaded
+              ? currentState.categoryProducts.length
+              : _filteredProducts.length;
       await _cubit.searchCategoryProductsPaginated(
         fetchId,
         _searchQuery,
-        limit: 50,
+        limit: 10,
+        offset: loadedCount,
       );
     }
 
@@ -386,6 +397,10 @@ class _CategoryProductsViewState extends State<CategoryProductsView> {
                                   Assets.iconsFilterIcon,
                                   height: 22,
                                   width: 22,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppColors.primaryColor,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ),

@@ -16,6 +16,7 @@ class LocaleProvider with ChangeNotifier {
   Future<void> setLocale(String languageCode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language_code', languageCode);
+    await prefs.setString('lang', languageCode);
     _locale = Locale(languageCode);
     log("Language set to: $languageCode");
     final dio = GetIt.I.get<Dio>();
@@ -25,7 +26,12 @@ class LocaleProvider with ChangeNotifier {
 
   Future<void> loadLocale() async {
     final prefs = await SharedPreferences.getInstance();
-    final languageCode = prefs.getString('language_code') ?? 'ar';
+    final languageCode =
+        prefs.getString('language_code') ?? prefs.getString('lang') ?? 'ar';
+    if (!prefs.containsKey('language_code')) {
+      await prefs.setString('language_code', languageCode);
+      await prefs.setString('lang', languageCode);
+    }
     _locale = Locale(languageCode);
     log("Loaded language: $languageCode");
     final dio = GetIt.I.get<Dio>();

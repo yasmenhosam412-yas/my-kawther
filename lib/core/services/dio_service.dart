@@ -13,7 +13,9 @@ class DioService {
   static final Dio dio = GetIt.I.get<Dio>();
 
   static Future<void> init() async {
-    final langCode = GetIt.I.get<SharedPreferences>().getString('lang') ?? 'ar';
+    final prefs = GetIt.I.get<SharedPreferences>();
+    final langCode =
+        prefs.getString('language_code') ?? prefs.getString('lang') ?? 'ar';
     final SecureStorageHelper storageHelper = SecureStorageHelper();
     String? token;
 

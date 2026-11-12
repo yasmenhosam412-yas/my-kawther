@@ -276,7 +276,16 @@ class _MyAppState extends State<MyApp> {
               ),
             ),
             locale: localeProvider.locale,
-            supportedLocales: const [Locale('en'), Locale('ar')],
+            supportedLocales: const [Locale('ar'), Locale('en')],
+            localeResolutionCallback: (deviceLocale, supportedLocales) {
+              for (final supported in supportedLocales) {
+                if (supported.languageCode ==
+                    localeProvider.locale.languageCode) {
+                  return localeProvider.locale;
+                }
+              }
+              return const Locale('ar');
+            },
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,

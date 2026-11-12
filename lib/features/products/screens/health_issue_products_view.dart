@@ -34,10 +34,12 @@ class HealthIssueProductsView extends StatefulWidget {
 
 class _HealthIssueProductsViewState extends State<HealthIssueProductsView> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final Set<String> _selectedFilters = {};
 
   List<HealthIssueProducts> _allProducts = [];
   List<HealthIssueProducts> _filteredProducts = [];
+  bool _isLoadingMore = false;
 
   late final HealthIssueProductsCubit _cubit;
 
@@ -48,8 +50,30 @@ class _HealthIssueProductsViewState extends State<HealthIssueProductsView> {
       GetIt.I<HealthIssueProductsService>(),
       GetIt.I<BrandProductsService>(),
     );
+    _scrollController.addListener(_onScroll);
     _fetchProducts();
     _searchController.addListener(_applyFiltersAndSearch);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients ||
+        _searchController.text.trim().isNotEmpty ||
+        _selectedFilters.isNotEmpty ||
+        !_cubit.canLoadMore ||
+        _isLoadingMore) {
+      return;
+    }
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 300) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    setState(() => _isLoadingMore = true);
+    await _cubit.fetchHealthIssueProductsMore(widget.issueId, context);
+    if (!mounted) return;
+    setState(() => _isLoadingMore = false);
   }
 
   Future<void> _fetchProducts() async {
@@ -150,6 +174,9 @@ class _HealthIssueProductsViewState extends State<HealthIssueProductsView> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
   }
 
@@ -338,6 +365,10 @@ class _HealthIssueProductsViewState extends State<HealthIssueProductsView> {
                                 Assets.iconsFilterIcon,
                                 height: 22,
                                 width: 22,
+                                colorFilter: const ColorFilter.mode(
+                                  AppColors.primaryColor,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               if (_selectedFilters.isNotEmpty)
                                 PositionedDirectional(
@@ -434,6 +465,7 @@ class _HealthIssueProductsViewState extends State<HealthIssueProductsView> {
           }
 
           return GridView.builder(
+            controller: _scrollController,
             padding: const EdgeInsets.only(bottom: 18),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -441,8 +473,22 @@ class _HealthIssueProductsViewState extends State<HealthIssueProductsView> {
               mainAxisSpacing: 14,
               childAspectRatio: ProductItem.cardAspectRatio,
             ),
-            itemCount: _filteredProducts.length,
+            itemCount:
+                _filteredProducts.length +
+                (_isLoadingMore || state.isLoadMore ? 1 : 0),
             itemBuilder: (context, index) {
+              if (index >= _filteredProducts.length) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                  ),
+                );
+              }
               final product = _filteredProducts[index];
               final isFav = context.read<FavouriteCubit>().isProductFavourite(
                 product.id ?? 0,

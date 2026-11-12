@@ -37,7 +37,7 @@ class BrandProductsCubit extends Cubit<BrandProductsState> {
         offset: _currentOffset,
       );
       brandProducts = model.products ?? [];
-      _hasMore = brandProducts.length == _limit;
+      _hasMore = brandProducts.length >= _limit;
       emit(BrandProductsLoaded(brandProducts: brandProducts));
     } on DioException catch (e) {
       if (!context.mounted) return;
@@ -62,8 +62,14 @@ class BrandProductsCubit extends Cubit<BrandProductsState> {
         offset: _currentOffset,
       );
       final fetched = model.products ?? [];
-      brandProducts.addAll(fetched);
-      _hasMore = fetched.length == _limit;
+      brandProducts.addAll(
+        fetched.where(
+          (product) =>
+              product.id == null ||
+              !brandProducts.any((current) => current.id == product.id),
+        ),
+      );
+      _hasMore = fetched.length >= _limit;
       emit(BrandProductsLoaded(brandProducts: brandProducts));
     } on DioException catch (e) {
       if (context.mounted) {

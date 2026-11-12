@@ -36,7 +36,14 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
 
   List<Map<String, dynamic>> weightHistoryData = [];
 
+  bool get isBusy =>
+      state is HealthServicesLoading ||
+      state is HealthServicesVaccineFullLoading ||
+      state is HealthServicesUpdatingVaccineStatus ||
+      state is ChildDeletedLoading;
+
   Future<void> fetchCurrentPeriodData() async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -57,6 +64,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
   }
 
   Future<void> getPreganacyCalcCurrentData() async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -82,6 +90,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required String unit,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -115,6 +124,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required int periodLength,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -148,6 +158,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required String lastPeriodDate,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -176,6 +187,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required String measuredAt,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -218,6 +230,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required String measuredAt,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -256,6 +269,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required String babyBirth,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
 
     try {
@@ -284,6 +298,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
   }
 
   Future<void> fetchVaccineFullData({required BuildContext context}) async {
+    if (isBusy) return;
     emit(HealthServicesVaccineFullLoading());
     try {
       final model = await _healthService.getVaccinesFullDataChildren();
@@ -307,6 +322,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
   }
 
   Future<void> deleteChild(int childId) async {
+    if (isBusy) return;
     emit(ChildDeletedLoading());
     try {
       await _healthService.deleteChild(childId);
@@ -322,6 +338,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
   }
 
   Future<void> fetchWeightHistory() async {
+    if (isBusy) return;
     emit(HealthServicesLoading());
     try {
       weightHistoryData = await _healthService.getWeightHistory();
@@ -342,6 +359,7 @@ class HealthServiceCubit extends Cubit<HealthServcieState> {
     required int vacId,
     required BuildContext context,
   }) async {
+    if (isBusy) return;
     updatingVaccineId = vacId;
     emit(HealthServicesUpdatingVaccineStatus());
 

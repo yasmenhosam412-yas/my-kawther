@@ -18,6 +18,10 @@ class HomeState extends Equatable {
     this.isLoadingMore = false,
     this.isLoadingCategoriesMore = false,
     this.categoriesHasMore = true,
+    this.isLoadingBrandsMore = false,
+    this.brandsHasMore = true,
+    this.isLoadingHealthIssuesMore = false,
+    this.healthIssuesHasMore = true,
     this.error,
     this.categoriesError,
     this.banners,
@@ -47,6 +51,10 @@ class HomeState extends Equatable {
   final bool isLoadingMore;
   final bool isLoadingCategoriesMore;
   final bool categoriesHasMore;
+  final bool isLoadingBrandsMore;
+  final bool brandsHasMore;
+  final bool isLoadingHealthIssuesMore;
+  final bool healthIssuesHasMore;
   final Errors? error;
   final Errors? categoriesError;
 
@@ -89,6 +97,10 @@ class HomeState extends Equatable {
     bool? isLoadingMore,
     bool? isLoadingCategoriesMore,
     bool? categoriesHasMore,
+    bool? isLoadingBrandsMore,
+    bool? brandsHasMore,
+    bool? isLoadingHealthIssuesMore,
+    bool? healthIssuesHasMore,
     Errors? error,
     Errors? categoriesError,
     bool clearError = false,
@@ -122,6 +134,11 @@ class HomeState extends Equatable {
       isLoadingCategoriesMore:
           isLoadingCategoriesMore ?? this.isLoadingCategoriesMore,
       categoriesHasMore: categoriesHasMore ?? this.categoriesHasMore,
+      isLoadingBrandsMore: isLoadingBrandsMore ?? this.isLoadingBrandsMore,
+      brandsHasMore: brandsHasMore ?? this.brandsHasMore,
+      isLoadingHealthIssuesMore:
+          isLoadingHealthIssuesMore ?? this.isLoadingHealthIssuesMore,
+      healthIssuesHasMore: healthIssuesHasMore ?? this.healthIssuesHasMore,
       error: clearError ? null : error ?? this.error,
       categoriesError:
           clearCategoriesError ? null : categoriesError ?? this.categoriesError,
@@ -155,6 +172,10 @@ class HomeState extends Equatable {
     isLoadingMore,
     isLoadingCategoriesMore,
     categoriesHasMore,
+    isLoadingBrandsMore,
+    brandsHasMore,
+    isLoadingHealthIssuesMore,
+    healthIssuesHasMore,
     error,
     categoriesError,
     banners,

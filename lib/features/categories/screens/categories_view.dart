@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/core/widgets/pharmacy_logo.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
+import 'package:elkawther/features/home/models/banners_model.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/home/utils/home_banners.dart';
+import 'package:elkawther/features/home/widgets/home_banner.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
 import 'package:elkawther/features/home/widgets/shimmer_box.dart';
 import 'package:elkawther/generated/assets.dart';
@@ -14,10 +19,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class CategoriesView extends StatefulWidget {
-  const CategoriesView({super.key, this.fromBanner = false, this.bannerTitle});
+  const CategoriesView({
+    super.key,
+    this.fromBanner = false,
+    this.bannerTitle,
+    this.showBanner = false,
+  });
 
   final bool fromBanner;
   final String? bannerTitle;
+  final bool showBanner;
 
   @override
   State<CategoriesView> createState() => _CategoriesViewState();
@@ -27,18 +38,32 @@ class _CategoriesViewState extends State<CategoriesView>
     with AutomaticKeepAliveClientMixin {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  Timer? _bannerScheduleTimer;
+
+  bool get _shouldShowBanner => widget.showBanner || widget.fromBanner;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<HomeCubit>().loadCategories();
+      if (!mounted) return;
+      final cubit = context.read<HomeCubit>();
+      cubit.loadCategories();
+      if (_shouldShowBanner) {
+        cubit.loadBanners(force: true);
+      }
     });
+    if (_shouldShowBanner) {
+      _bannerScheduleTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
   void dispose() {
+    _bannerScheduleTimer?.cancel();
     _searchController.dispose();
     _scrollController
       ..removeListener(_onScroll)
@@ -90,179 +115,84 @@ class _CategoriesViewState extends State<CategoriesView>
         .toList();
   }
 
+  Future<void> _onRefresh() async {
+    final cubit = context.read<HomeCubit>();
+    if (_shouldShowBanner) {
+      await Future.wait([
+        cubit.loadBanners(force: true),
+        cubit.loadCategories(force: true),
+      ]);
+      return;
+    }
+    await cubit.loadCategories(force: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final title =
+        widget.bannerTitle?.trim().isNotEmpty == true
+            ? widget.bannerTitle!.trim()
+            : S.of(context).categories;
 
     return BlocBuilder<HomeCubit, HomeState>(
       builder: (context, state) {
         final categories = _categories(state);
+        final categoryBanners =
+            _shouldShowBanner
+                ? HomeBanners.of(state.banners, BannerPosition.category)
+                : const <HomeDemoBanner>[];
+        final crossAxisCount = MediaQuery.sizeOf(context).width >= 700 ? 3 : 2;
+
         return Scaffold(
           backgroundColor: const Color(0xFFF5FAFD),
           body: SafeArea(
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.fromLTRB(
-                    widget.fromBanner ? 8 : 20,
-                    12,
-                    20,
-                    18,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.primaryColor.withOpacity(0.14),
-                        AppColors.light,
-                        const Color(0xFFF5FAFD),
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (widget.fromBanner)
-                            IconButton(
-                              onPressed: () => Navigator.of(context).maybePop(),
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                size: 18,
-                                color: AppColors.darkColor,
-                              ),
-                            ),
-                          Expanded(
-                            child: Text(
-                              widget.bannerTitle?.trim().isNotEmpty == true
-                                  ? widget.bannerTitle!.trim()
-                                  : S.of(context).categories,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.noto16w400.copyWith(
-                                fontSize: 23,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.darkColor,
-                              ),
-                            ),
-                          ),
-                          if (state.allCategories != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 11,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: AppColors.primaryColor.withOpacity(
-                                    0.08,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.grid_view_rounded,
-                                    size: 15,
-                                    color: AppColors.primaryColor,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${state.allCategories!.data.length}',
-                                    style: AppTextStyles.noto14w400.copyWith(
-                                      color: AppColors.darkColor,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                      Padding(
-                        padding: EdgeInsetsDirectional.only(
-                          start: widget.fromBanner ? 48 : 0,
-                        ),
-                        child: Text(
+            child: RefreshIndicator(
+              color: AppColors.primaryColor,
+              onRefresh: _onRefresh,
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _CategoriesHero(
+                      title: title,
+                      subtitle:
                           isAr
-                              ? 'اكتشف الأقسام واختر ما يناسبك'
-                              : 'Explore departments and find what you need',
-                          style: AppTextStyles.noto14w400.copyWith(
-                            color: AppColors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
+                              ? 'تصفح كل الأقسام في مكان واحد'
+                              : 'Browse every department in one place',
+                      count:
+                          state.allCategories?.count ??
+                          state.allCategories?.data.length,
+                      showBack: _shouldShowBanner,
+                      onBack: () => Navigator.of(context).maybePop(),
+                      searchField: _SearchField(
                         controller: _searchController,
                         onChanged: (_) => setState(() {}),
-                        textInputAction: TextInputAction.search,
-                        decoration: InputDecoration(
-                          hintText: S.of(context).searchFor,
-                          hintStyle: AppTextStyles.noto14w400.copyWith(
-                            color: AppColors.grey,
-                            fontSize: 14,
-                          ),
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: SvgPicture.asset(
-                              Assets.iconsSearchIcon,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.primaryColor,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                          suffixIcon:
-                              _searchController.text.isEmpty
-                                  ? null
-                                  : IconButton(
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(
-                                      Icons.close_rounded,
-                                      color: AppColors.grey,
-                                      size: 20,
-                                    ),
-                                  ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide(
-                              color: AppColors.primaryColor.withOpacity(0.1),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: const BorderSide(
-                              color: AppColors.primaryColor,
-                              width: 1.4,
-                            ),
-                          ),
-                        ),
+                        onClear: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _buildCategoryContent(context, state, categories),
-                ),
-              ],
+                  if (categoryBanners.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                        child: HomeBanner(banners: categoryBanners),
+                      ),
+                    ),
+                  ..._buildBodySlivers(
+                    context: context,
+                    state: state,
+                    categories: categories,
+                    crossAxisCount: crossAxisCount,
+                    isAr: isAr,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -270,145 +200,311 @@ class _CategoriesViewState extends State<CategoriesView>
     );
   }
 
-  Widget _buildCategoryContent(
-    BuildContext context,
-    HomeState state,
-    List<HomeDemoCategory> categories,
-  ) {
+  List<Widget> _buildBodySlivers({
+    required BuildContext context,
+    required HomeState state,
+    required List<HomeDemoCategory> categories,
+    required int crossAxisCount,
+    required bool isAr,
+  }) {
     if (categories.isEmpty) {
-      if (state.isLoadingCategoriesMore) {
-        return const _CategoriesLoadingGrid();
-      }
-      if (state.categoriesError != null) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  state.categoriesError!.localizedMessage(context),
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.noto14w400.copyWith(
-                    color: AppColors.grey,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () => context.read<HomeCubit>().loadCategories(),
-                  child: Text(S.of(context).retry),
-                ),
-              ],
+      if (state.isLoadingCategoriesMore && state.allCategories == null) {
+        return [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.86,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => const _CategoryTileShimmer(),
+                childCount: 6,
+              ),
             ),
           ),
-        );
+        ];
       }
-      return Center(
+
+      if (state.categoriesError != null) {
+        return [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _EmptyState(
+              message: state.categoriesError!.localizedMessage(context),
+              actionLabel: S.of(context).retry,
+              onAction: () => context.read<HomeCubit>().loadCategories(),
+            ),
+          ),
+        ];
+      }
+
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _EmptyState(
+            message: S.of(context).notFoundCat,
+            showLogo: true,
+          ),
+        ),
+      ];
+    }
+
+    return [
+      SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: Row(
             children: [
-              const PharmacyLogo(size: 72),
-              const SizedBox(height: 16),
               Text(
-                S.of(context).notFoundCat,
-                textAlign: TextAlign.center,
+                isAr ? 'كل الأقسام' : 'All departments',
+                style: AppTextStyles.noto16w400.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.darkColor,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                isAr
+                    ? '${categories.length} قسم'
+                    : '${categories.length} items',
                 style: AppTextStyles.noto14w400.copyWith(
                   color: AppColors.grey,
-                  fontSize: 16,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth >= 700 ? 3 : 2;
-        return Column(
-          children: [
-            Expanded(
-              child: GridView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
-                itemCount: categories.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 13,
-                  mainAxisSpacing: 13,
-                  childAspectRatio: crossAxisCount == 3 ? 0.9 : 0.78,
-                ),
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  return _CategoryPoster(
-                    category: category,
-                    onTap:
-                        () => HomeNavigation.openCategoryProducts(
-                          context,
-                          category,
-                        ),
-                  );
-                },
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: crossAxisCount == 3 ? 0.92 : 0.84,
+          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final category = categories[index];
+            return _CategoryTile(
+              category: category,
+              onTap:
+                  () => HomeNavigation.openCategoryProducts(context, category),
+            );
+          }, childCount: categories.length),
+        ),
+      ),
+      if (state.isLoadingCategoriesMore)
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24, top: 4),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
               ),
             ),
-            if (state.isLoadingCategoriesMore)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.4),
-                ),
-              )
-            else if (state.categoriesError != null)
-              TextButton(
+          ),
+        )
+      else if (state.categoriesError != null)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Center(
+              child: TextButton(
                 onPressed:
                     () => context.read<HomeCubit>().loadCategories(
                       loadMore: true,
                     ),
                 child: Text(state.categoriesError!.localizedMessage(context)),
               ),
-          ],
-        );
-      },
-    );
+            ),
+          ),
+        )
+      else
+        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+    ];
   }
 
   @override
   bool get wantKeepAlive => true;
 }
 
-class _CategoriesLoadingGrid extends StatelessWidget {
-  const _CategoriesLoadingGrid();
+class _CategoriesHero extends StatelessWidget {
+  const _CategoriesHero({
+    required this.title,
+    required this.subtitle,
+    required this.searchField,
+    required this.showBack,
+    required this.onBack,
+    this.count,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget searchField;
+  final bool showBack;
+  final VoidCallback onBack;
+  final int? count;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      itemCount: 6,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 13,
-        mainAxisSpacing: 13,
-        childAspectRatio: 0.78,
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(showBack ? 8 : 20, 10, 20, 18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryColor.withOpacity(0.16),
+            AppColors.primaryColor.withOpacity(0.05),
+            const Color(0xFFF5FAFD),
+          ],
+        ),
       ),
-      itemBuilder:
-          (context, index) => const ShimmerBox(
-            height: double.infinity,
-            width: double.infinity,
-            radius: 22,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (showBack)
+                IconButton(
+                  onPressed: onBack,
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,
+                    color: AppColors.darkColor,
+                  ),
+                ),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.noto16w400.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkColor,
+                  ),
+                ),
+              ),
+              if (count != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.92),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: AppTextStyles.noto14w400.copyWith(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
           ),
+          Padding(
+            padding: EdgeInsetsDirectional.only(start: showBack ? 48 : 0),
+            child: Text(
+              subtitle,
+              style: AppTextStyles.noto14w400.copyWith(
+                color: AppColors.grey,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          searchField,
+        ],
+      ),
     );
   }
 }
 
-class _CategoryPoster extends StatelessWidget {
-  const _CategoryPoster({required this.category, required this.onTap});
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: S.of(context).searchFor,
+        hintStyle: AppTextStyles.noto14w400.copyWith(
+          color: AppColors.grey,
+          fontSize: 14,
+        ),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(12),
+          child: SvgPicture.asset(
+            Assets.iconsSearchIcon,
+            colorFilter: const ColorFilter.mode(
+              AppColors.primaryColor,
+              BlendMode.srcIn,
+            ),
+          ),
+        ),
+        suffixIcon:
+            controller.text.isEmpty
+                ? null
+                : IconButton(
+                  onPressed: onClear,
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.grey,
+                    size: 20,
+                  ),
+                ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: AppColors.primaryColor.withOpacity(0.1),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(
+            color: AppColors.primaryColor,
+            width: 1.4,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({required this.category, required this.onTap});
 
   final HomeDemoCategory category;
   final VoidCallback onTap;
@@ -419,98 +515,62 @@ class _CategoryPoster extends StatelessWidget {
     final subCount = category.subcategories.length;
 
     return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(22),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryColor.withOpacity(0.12),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primaryColor.withOpacity(0.08)),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: Stack(
-              fit: StackFit.expand,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ColoredBox(
-                  color: AppColors.light,
-                  child: HomeCatalogImage(
-                    assetPath: category.imageUrl,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.05),
-                        Colors.black.withOpacity(0.18),
-                        AppColors.primaryColor.withOpacity(0.92),
-                      ],
-                      stops: const [0.35, 0.58, 1],
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: ColoredBox(
+                      color: AppColors.light,
+                      child: HomeCatalogImage(
+                        assetPath: category.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Align(
-                        alignment: AlignmentDirectional.topEnd,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.92),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isAr
-                                ? Icons.arrow_back_ios_new_rounded
-                                : Icons.arrow_forward_ios_rounded,
-                            size: 13,
-                            color: AppColors.primaryColor,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        category.name(context),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.noto16w400.copyWith(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          if (subCount > 0)
-                            _MetaChip(
-                              label:
-                                  isAr ? '$subCount قسم فرعي' : '$subCount sub',
-                            ),
-                        ],
-                      ),
-                    ],
+                const SizedBox(height: 12),
+                Text(
+                  category.name(context),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.noto16w400.copyWith(
+                    color: AppColors.darkColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    height: 1.25,
                   ),
                 ),
+                if (subCount > 0) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    isAr ? '$subCount قسم فرعي' : '$subCount subcategories',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.noto14w400.copyWith(
+                      color: AppColors.grey,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -520,27 +580,56 @@ class _CategoryPoster extends StatelessWidget {
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label});
-
-  final String label;
+class _CategoryTileShimmer extends StatelessWidget {
+  const _CategoryTileShimmer();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.22)),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.noto14w400.copyWith(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
+    return const ShimmerBox(
+      height: double.infinity,
+      width: double.infinity,
+      radius: 20,
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+    this.showLogo = false,
+  });
+
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool showLogo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (showLogo) ...[
+            const PharmacyLogo(size: 72),
+            const SizedBox(height: 16),
+          ],
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.noto14w400.copyWith(
+              color: AppColors.grey,
+              fontSize: 15,
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 12),
+            FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ],
       ),
     );
   }

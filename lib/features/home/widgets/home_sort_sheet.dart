@@ -232,6 +232,7 @@ class HomeFilterButton extends StatelessWidget {
                 active ? Colors.white : AppColors.primaryColor,
                 BlendMode.srcIn,
               ),
+              fit: BoxFit.contain,
             ),
           ),
         ),

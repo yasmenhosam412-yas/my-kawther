@@ -14,11 +14,14 @@ import 'package:elkawther/features/home/screens/home_banner_products_view.dart';
 import 'package:elkawther/features/home/screens/home_cart_view.dart';
 import 'package:elkawther/features/home/screens/home_notifications_view.dart';
 import 'package:elkawther/features/home/screens/home_problems_browse_view.dart';
+import 'package:elkawther/features/home/screens/home_product_list_source.dart';
 import 'package:elkawther/features/home/screens/home_products_list_view.dart';
 import 'package:elkawther/features/search/screens/search_view.dart';
 import 'package:elkawther/features/home/widgets/home_ratings_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+export 'package:elkawther/features/home/screens/home_product_list_source.dart';
 
 class HomeNavigation {
   const HomeNavigation._();
@@ -50,8 +53,16 @@ class HomeNavigation {
     BuildContext context, {
     required String title,
     required List<HomeDemoProduct> products,
+    HomeProductListSource? source,
   }) {
-    _push(context, HomeProductsListView(title: title, products: products));
+    _push(
+      context,
+      HomeProductsListView(
+        title: title,
+        products: products,
+        source: source,
+      ),
+    );
   }
 
   static void openBannerProducts(
@@ -89,8 +100,11 @@ class HomeNavigation {
 
   static void openCategories(BuildContext context, {int? selectedCategoryId}) {
     if (selectedCategoryId != null) {
+      final homeState = context.read<HomeCubit>().state;
       final categories =
-          context.read<HomeCubit>().state.allCategories?.data ?? const [];
+          homeState.allCategories?.data ??
+          homeState.categories?.data ??
+          const [];
       for (final category in categories) {
         if (category.id == selectedCategoryId) {
           openCategoryProducts(
@@ -117,7 +131,7 @@ class HomeNavigation {
         }
       }
     }
-    _push(context, const CategoriesView());
+    _push(context, const CategoriesView(showBanner: true));
   }
 
   static void openBrand(BuildContext context, HomeDemoBrand brand) {

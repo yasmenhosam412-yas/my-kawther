@@ -1,5 +1,3 @@
-import 'package:dio/dio.dart';
-import 'package:elkawther/core/errors/errors.dart';
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/core/widgets/guest_user_dialog.dart';
 import 'package:elkawther/core/theme/app_text_style.dart';
@@ -12,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:elkawther/core/providers/locale_provider.dart';
-import 'package:elkawther/core/widgets/app_snack_bar.dart';
 import 'package:elkawther/generated/assets.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:elkawther/core/routes/routes.dart';

@@ -4,7 +4,7 @@ import 'package:elkawther/core/theme/app_text_style.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
-import 'package:elkawther/generated/l10n.dart';
+import 'package:elkawther/features/home/widgets/home_section_empty.dart';
 import 'package:flutter/material.dart';
 
 class HomeBanner extends StatefulWidget {
@@ -29,7 +29,17 @@ class _HomeBannerState extends State<HomeBanner> {
   @override
   Widget build(BuildContext context) {
     final banners = widget.banners ?? HomeDemoData.banners;
-    if (banners.isEmpty) return const SizedBox.shrink();
+    if (banners.isEmpty) {
+      final isAr = Localizations.localeOf(context).languageCode == 'ar';
+      return HomeSectionEmpty(
+        message: isAr ? 'لا توجد بانرات حالياً' : 'No banners available',
+        height: 180,
+        iconSize: 56,
+        padding: EdgeInsets.zero,
+      );
+    }
+
+    final isSingle = banners.length == 1;
 
     return Column(
       children: [
@@ -37,9 +47,12 @@ class _HomeBannerState extends State<HomeBanner> {
           itemCount: banners.length,
           carouselController: _controller,
           options: CarouselOptions(
-            aspectRatio: 1.9,
-            autoPlay: true,
+            height: 180,
+            autoPlay: !isSingle,
+            enableInfiniteScroll: !isSingle,
             viewportFraction: 1,
+            enlargeCenterPage: false,
+            padEnds: false,
             onPageChanged: (index, reason) => setState(() => _current = index),
           ),
           itemBuilder: (context, index, realIndex) {
@@ -61,44 +74,47 @@ class _HomeBannerState extends State<HomeBanner> {
                       : null,
               child: _PharmacyBannerCard(
                 title: banner.title(context),
+                description: banner.description,
                 imageUrl: banner.imageUrl,
-                pageLabel: '${index + 1} / ${banners.length}',
+                pageLabel: isSingle ? null : '${index + 1} / ${banners.length}',
               ),
             );
           },
         ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children:
-              banners.asMap().entries.map((entry) {
-                final isActive = _current == entry.key;
-                return GestureDetector(
-                  onTap: () => _controller.animateToPage(entry.key),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: SizedBox(
-                      width: 28,
-                      height: 24,
-                      child: Center(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          width: isActive ? 20 : 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(99),
-                            color:
-                                isActive
-                                    ? AppColors.primaryColor
-                                    : AppColors.greyCarsoul,
+        if (!isSingle) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children:
+                banners.asMap().entries.map((entry) {
+                  final isActive = _current == entry.key;
+                  return GestureDetector(
+                    onTap: () => _controller.animateToPage(entry.key),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: SizedBox(
+                        width: 28,
+                        height: 24,
+                        child: Center(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            width: isActive ? 20 : 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(99),
+                              color:
+                                  isActive
+                                      ? AppColors.primaryColor
+                                      : AppColors.greyCarsoul,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-        ),
+                  );
+                }).toList(),
+          ),
+        ],
       ],
     );
   }
@@ -108,16 +124,19 @@ class _PharmacyBannerCard extends StatelessWidget {
   const _PharmacyBannerCard({
     required this.title,
     required this.imageUrl,
-    required this.pageLabel,
+    this.description,
+    this.pageLabel,
   });
 
   final String title;
   final String imageUrl;
-  final String pageLabel;
+  final String? description;
+  final String? pageLabel;
 
   @override
   Widget build(BuildContext context) {
     final title = this.title.trim();
+    final description = this.description?.trim() ?? '';
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
       width: double.infinity,
@@ -156,90 +175,81 @@ class _PharmacyBannerCard extends StatelessWidget {
               ),
             ),
           ),
-          PositionedDirectional(
-            top: 14,
-            start: 14,
-            end: 14,
-            child: Row(
-              children: [
-                Flexible(
-                  child: Container(
-                    padding: const EdgeInsetsDirectional.fromSTEB(10, 7, 12, 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.94),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.local_pharmacy_rounded,
-                          size: 15,
-                          color: AppColors.primaryColor,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            S.of(context).yourPharmacyInYourPocket,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.noto14w400.copyWith(
-                              color: AppColors.primaryColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          if (pageLabel != null)
+            PositionedDirectional(
+              top: 14,
+              end: 14,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.32)),
+                ),
+                child: Text(
+                  pageLabel!,
+                  textDirection: TextDirection.ltr,
+                  style: AppTextStyles.noto14w400.copyWith(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.32)),
-                  ),
-                  child: Text(
-                    pageLabel,
-                    textDirection: TextDirection.ltr,
-                    style: AppTextStyles.noto14w400.copyWith(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          if (title.isNotEmpty)
+          if (title.isNotEmpty || description.isNotEmpty)
             PositionedDirectional(
               start: 18,
               end: 18,
               bottom: 18,
-              child: Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.headlineLarge.copyWith(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2,
-                  shadows: const [
-                    Shadow(
-                      color: Color(0x66000000),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (title.isNotEmpty)
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.headlineLarge.copyWith(
+                        color: Colors.white,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                        shadows: const [
+                          Shadow(
+                            color: Color(0x66000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (description.isNotEmpty) ...[
+                    if (title.isNotEmpty) const SizedBox(height: 6),
+                    Text(
+                      description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.noto14w400.copyWith(
+                        color: Colors.white.withOpacity(0.92),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                        shadows: const [
+                          Shadow(
+                            color: Color(0x66000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
         ],

@@ -71,23 +71,27 @@ class _ViewMoreProductsViewState extends State<ViewMoreProductsView> {
 
   void _onScroll() {
     if (_isFetchingMore) return;
+    if (!_scrollController.hasClients) return;
     if (_scrollController.position.pixels <
         _scrollController.position.maxScrollExtent - 350) {
       return;
     }
-
-    
+    final state = context.read<HomeCubit>().state;
+    if (!state.productsHasMore || state.isLoadingMore) return;
+    _fetchProducts();
   }
 
   Future<void> _fetchProducts({bool refresh = false}) async {
-
-    if (widget.productType == 'categories' && !refresh) {
-      _isFetchingMore = true;
+    if (_isFetchingMore) return;
+    setState(() => _isFetchingMore = true);
+    try {
+      await context.read<HomeCubit>().loadViewMoreProducts(
+        widget.productType,
+        loadMore: !refresh,
+      );
+    } finally {
+      if (mounted) setState(() => _isFetchingMore = false);
     }
-
-    
-
-    if (mounted) setState(() => _isFetchingMore = false);
   }
 
   List<dynamic> _items(HomeState state) {

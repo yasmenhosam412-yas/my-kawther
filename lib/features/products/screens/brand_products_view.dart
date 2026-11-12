@@ -390,6 +390,10 @@ class _BrandProductsViewState extends State<BrandProductsView> {
                                 Assets.iconsFilterIcon,
                                 height: 22,
                                 width: 22,
+                                colorFilter: const ColorFilter.mode(
+                                  AppColors.primaryColor,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               if (_selectedFilters.isNotEmpty)
                                 PositionedDirectional(

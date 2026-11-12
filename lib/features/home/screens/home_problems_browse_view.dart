@@ -5,12 +5,45 @@ import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
+import 'package:elkawther/features/home/widgets/home_section_empty.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomeProblemsBrowseView extends StatelessWidget {
+class HomeProblemsBrowseView extends StatefulWidget {
   const HomeProblemsBrowseView({super.key});
+
+  @override
+  State<HomeProblemsBrowseView> createState() => _HomeProblemsBrowseViewState();
+}
+
+class _HomeProblemsBrowseViewState extends State<HomeProblemsBrowseView> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<HomeCubit>().loadHealthIssues();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 220) {
+      context.read<HomeCubit>().loadHealthIssues(loadMore: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,31 +114,38 @@ class HomeProblemsBrowseView extends StatelessWidget {
                         .toList() ??
                     const [];
                 if (issues.isEmpty) {
-                  if (state.status == HomeStatus.loading) {
+                  if (state.status == HomeStatus.loading ||
+                      state.isLoadingHealthIssuesMore) {
                     return const Center(
                       child: CircularProgressIndicator(color: AppColors.teal),
                     );
                   }
-                  return _IssuesMessage(
-                    message: S.of(context).no_products_found,
+                  final isAr =
+                      Localizations.localeOf(context).languageCode == 'ar';
+                  return HomePageEmpty(
+                    message:
+                        isAr
+                            ? 'لا توجد مشاكل صحية'
+                            : 'No health issues found',
                   );
                 }
 
-                final problems = issues
-                    .map(
-                      (issue) => HomeDemoProblem(
-                        id: issue.id!,
-                        nameAr: issue.name ?? '',
-                        nameEn: issue.name ?? '',
-                        subtitleAr: '',
-                        subtitleEn: '',
-                        icon: Icons.health_and_safety_rounded,
-                        color: AppColors.teal,
-                        productIds: const [],
-                        imageUrl: issue.imageUrl ?? issue.image ?? '',
-                      ),
-                    )
-                    .toList();
+                final problems =
+                    issues
+                        .map(
+                          (issue) => HomeDemoProblem(
+                            id: issue.id!,
+                            nameAr: issue.name ?? '',
+                            nameEn: issue.name ?? '',
+                            subtitleAr: '',
+                            subtitleEn: '',
+                            icon: Icons.health_and_safety_rounded,
+                            color: AppColors.teal,
+                            productIds: const [],
+                            imageUrl: issue.imageUrl ?? issue.image ?? '',
+                          ),
+                        )
+                        .toList();
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,8 +154,8 @@ class HomeProblemsBrowseView extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                       child: Text(
                         isAr
-                            ? '${problems.length} حالة صحية'
-                            : '${problems.length} health concerns',
+                            ? '${state.healthIssues?.count ?? problems.length} حالة صحية'
+                            : '${state.healthIssues?.count ?? problems.length} health concerns',
                         style: AppTextStyles.noto14w400.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -125,8 +165,11 @@ class HomeProblemsBrowseView extends StatelessWidget {
                     ),
                     Expanded(
                       child: GridView.builder(
+                        controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                        itemCount: problems.length,
+                        itemCount:
+                            problems.length +
+                            (state.isLoadingHealthIssuesMore ? 1 : 0),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
@@ -135,11 +178,26 @@ class HomeProblemsBrowseView extends StatelessWidget {
                               childAspectRatio: 0.78,
                             ),
                         itemBuilder: (context, index) {
+                          if (index >= problems.length) {
+                            return const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: AppColors.teal,
+                                ),
+                              ),
+                            );
+                          }
                           final problem = problems[index];
                           return _IssueTile(
                             problem: problem,
-                            onTap: () =>
-                                HomeNavigation.openProblem(context, problem),
+                            onTap:
+                                () => HomeNavigation.openProblem(
+                                  context,
+                                  problem,
+                                ),
                           );
                         },
                       ),
@@ -186,16 +244,17 @@ class _IssueTile extends StatelessWidget {
                       color: AppColors.teal.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: problem.imageUrl.trim().isEmpty
-                        ? const Icon(
-                            Icons.health_and_safety_rounded,
-                            color: AppColors.teal,
-                            size: 28,
-                          )
-                        : HomeCatalogImage(
-                            assetPath: problem.imageUrl,
-                            fit: BoxFit.contain,
-                          ),
+                    child:
+                        problem.imageUrl.trim().isEmpty
+                            ? const Icon(
+                              Icons.health_and_safety_rounded,
+                              color: AppColors.teal,
+                              size: 28,
+                            )
+                            : HomeCatalogImage(
+                              assetPath: problem.imageUrl,
+                              fit: BoxFit.contain,
+                            ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -220,22 +279,3 @@ class _IssueTile extends StatelessWidget {
   }
 }
 
-class _IssuesMessage extends StatelessWidget {
-  const _IssuesMessage({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
-        ),
-      ),
-    );
-  }
-}

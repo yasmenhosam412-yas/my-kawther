@@ -5,18 +5,51 @@ import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
 import 'package:elkawther/features/home/widgets/home_catalog_image.dart';
+import 'package:elkawther/features/home/widgets/home_section_empty.dart';
 import 'package:elkawther/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomeBrandsBrowseView extends StatelessWidget {
+class HomeBrandsBrowseView extends StatefulWidget {
   const HomeBrandsBrowseView({super.key});
 
+  @override
+  State<HomeBrandsBrowseView> createState() => _HomeBrandsBrowseViewState();
+}
+
+class _HomeBrandsBrowseViewState extends State<HomeBrandsBrowseView> {
   static const _colors = [
     Color(0xFF0B76B9),
     Color(0xFF06A786),
     Color(0xFFEC4899),
   ];
+
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<HomeCubit>().loadBrands();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 220) {
+      context.read<HomeCubit>().loadBrands(loadMore: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,33 +116,38 @@ class HomeBrandsBrowseView extends StatelessWidget {
           Expanded(
             child: BlocBuilder<HomeCubit, HomeState>(
               builder: (context, state) {
-                final brands = state.brands
-                    .where((brand) => brand.id != null)
-                    .toList();
+                final brands =
+                    state.brands.where((brand) => brand.id != null).toList();
                 if (brands.isEmpty) {
-                  if (state.status == HomeStatus.loading) {
+                  if (state.status == HomeStatus.loading ||
+                      state.isLoadingBrandsMore) {
                     return const Center(
                       child: CircularProgressIndicator(
                         color: AppColors.primaryColor,
                       ),
                     );
                   }
-                  return _BrandsMessage(message: S.of(context).no_products_found);
+                  final isAr =
+                      Localizations.localeOf(context).languageCode == 'ar';
+                  return HomePageEmpty(
+                    message: isAr ? 'لا توجد ماركات' : 'No brands found',
+                  );
                 }
 
-                final items = brands.asMap().entries.map((entry) {
-                  final brand = entry.value;
-                  return HomeDemoBrand(
-                    id: brand.id!,
-                    nameAr: brand.name ?? '',
-                    nameEn: brand.name ?? '',
-                    categoryAr: '',
-                    categoryEn: '',
-                    logoUrl: brand.imageUrl ?? brand.image ?? '',
-                    color: _colors[entry.key % _colors.length],
-                    productIds: const [],
-                  );
-                }).toList();
+                final items =
+                    brands.asMap().entries.map((entry) {
+                      final brand = entry.value;
+                      return HomeDemoBrand(
+                        id: brand.id!,
+                        nameAr: brand.name ?? '',
+                        nameEn: brand.name ?? '',
+                        categoryAr: '',
+                        categoryEn: '',
+                        logoUrl: brand.imageUrl ?? brand.image ?? '',
+                        color: _colors[entry.key % _colors.length],
+                        productIds: const [],
+                      );
+                    }).toList();
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,8 +156,8 @@ class HomeBrandsBrowseView extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                       child: Text(
                         isAr
-                            ? '${items.length} ماركة موثوقة'
-                            : '${items.length} trusted brands',
+                            ? '${state.brandsModel?.count ?? items.length} ماركة موثوقة'
+                            : '${state.brandsModel?.count ?? items.length} trusted brands',
                         style: AppTextStyles.noto14w400.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -129,8 +167,10 @@ class HomeBrandsBrowseView extends StatelessWidget {
                     ),
                     Expanded(
                       child: GridView.builder(
+                        controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                        itemCount: items.length,
+                        itemCount:
+                            items.length + (state.isLoadingBrandsMore ? 1 : 0),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
@@ -139,11 +179,22 @@ class HomeBrandsBrowseView extends StatelessWidget {
                               childAspectRatio: 0.78,
                             ),
                         itemBuilder: (context, index) {
+                          if (index >= items.length) {
+                            return const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                ),
+                              ),
+                            );
+                          }
                           final brand = items[index];
                           return _BrandTile(
                             brand: brand,
-                            onTap: () =>
-                                HomeNavigation.openBrand(context, brand),
+                            onTap:
+                                () => HomeNavigation.openBrand(context, brand),
                           );
                         },
                       ),
@@ -218,22 +269,3 @@ class _BrandTile extends StatelessWidget {
   }
 }
 
-class _BrandsMessage extends StatelessWidget {
-  const _BrandsMessage({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.noto14w400.copyWith(color: AppColors.grey),
-        ),
-      ),
-    );
-  }
-}

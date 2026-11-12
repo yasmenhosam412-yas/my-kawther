@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:elkawther/core/theme/app_colors.dart';
 import 'package:elkawther/features/auth/cubit/auth_cubit.dart';
 import 'package:elkawther/features/favorites/cubit/favourite_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_cubit.dart';
 import 'package:elkawther/features/home/cubit/home_state.dart';
 import 'package:elkawther/features/home/data/home_demo_data.dart';
+import 'package:elkawther/features/home/models/banners_model.dart';
 import 'package:elkawther/features/home/screens/home_navigation.dart';
+import 'package:elkawther/features/home/utils/home_banners.dart';
 import 'package:elkawther/features/home/widgets/empty_products_placeholder.dart';
 import 'package:elkawther/features/home/widgets/home_banner.dart';
 import 'package:elkawther/features/home/widgets/home_error_view.dart';
@@ -13,6 +17,7 @@ import 'package:elkawther/features/home/widgets/home_header.dart';
 import 'package:elkawther/features/home/widgets/home_product_card.dart';
 import 'package:elkawther/features/home/widgets/home_problems_row.dart';
 import 'package:elkawther/features/home/widgets/home_search_row.dart';
+import 'package:elkawther/features/home/widgets/home_section_empty.dart';
 import 'package:elkawther/features/home/widgets/shimmer_box.dart';
 import 'package:elkawther/features/home/widgets/section_header.dart';
 import 'package:elkawther/features/products/models/special_packages_model.dart';
@@ -29,6 +34,8 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
+  Timer? _bannerScheduleTimer;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +47,16 @@ class _HomeViewState extends State<HomeView> {
         context.read<FavouriteCubit>().fetchFavourites(context);
       }
     });
+    // Re-check starts_at / ends_at so scheduled banners appear/hide on time.
+    _bannerScheduleTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _bannerScheduleTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -114,6 +131,19 @@ class _HomeViewState extends State<HomeView> {
         );
         final bestSelling = _bestSellingProducts(state, context);
         final latestProducts = _latestProducts(state, context);
+        final topBanners = HomeBanners.of(state.banners, BannerPosition.home);
+        final offerBanners = HomeBanners.of(
+          state.banners,
+          BannerPosition.offers,
+        );
+        final middleBanners = HomeBanners.of(
+          state.banners,
+          BannerPosition.homeMiddle,
+        );
+        final bottomBanners = HomeBanners.of(
+          state.banners,
+          BannerPosition.homeBottom,
+        );
 
         return Scaffold(
           backgroundColor: const Color(0xFFF5FAFD),
@@ -161,131 +191,208 @@ class _HomeViewState extends State<HomeView> {
                     ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-                    child: Column(
-                      children: [
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 140),
-                          child: HomeBanner(banners: _banners(state)),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 220),
-                          child: Column(
-                            children: [
-                              SectionHeader(
-                                title: l10n.categories,
-                                actionText: l10n.viewMore,
-                                onPressed:
-                                    () =>
-                                        HomeNavigation.openCategories(context),
+                    child: Builder(
+                      builder: (context) {
+                        final isAr =
+                            Localizations.localeOf(context).languageCode ==
+                            'ar';
+                        final categories = _categoryChips(state);
+                        final brands = _brands(state);
+                        final problems = _healthIssues(state);
+                        final noBannersMessage =
+                            isAr
+                                ? 'لا توجد بانرات حالياً'
+                                : 'No banners available';
+                        final noBrandsMessage =
+                            isAr ? 'لا توجد ماركات' : 'No brands found';
+                        final noProblemsMessage =
+                            isAr
+                                ? 'لا توجد مشاكل صحية'
+                                : 'No health issues found';
+
+                        return Column(
+                          children: [
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 140),
+                              child:
+                                  topBanners.isNotEmpty
+                                      ? HomeBanner(banners: topBanners)
+                                      : HomeSectionEmpty(
+                                        message: noBannersMessage,
+                                        height: 180,
+                                        iconSize: 56,
+                                        padding: EdgeInsets.zero,
+                                      ),
+                            ),
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 220),
+                              child: Column(
+                                children: [
+                                  SectionHeader(
+                                    title: l10n.categories,
+                                    actionText: l10n.viewMore,
+                                    onPressed:
+                                        () => HomeNavigation.openCategories(
+                                          context,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (categories.isEmpty)
+                                    HomeSectionEmpty(
+                                      message: l10n.notFoundCat,
+                                      height: 118,
+                                      iconSize: 44,
+                                      padding: EdgeInsets.zero,
+                                    )
+                                  else
+                                    HomeChipsRow(
+                                      items: categories,
+                                      products: latestProducts,
+                                    ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              HomeChipsRow(
-                                items: _categoryChips(state),
+                            ),
+                            if (offerBanners.isNotEmpty) ...[
+                              const SizedBox(height: 22),
+                              HomeBanner(banners: offerBanners),
+                            ],
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 300),
+                              child: _ProductBlock(
+                                title: l10n.bigDiscounts,
+                                showFire: true,
+                                actionText: l10n.viewMore,
+                                products: discounts,
+                                onPressed:
+                                    () => HomeNavigation.openList(
+                                      context,
+                                      title: l10n.bigDiscounts,
+                                      products: discounts,
+                                      source:
+                                          HomeProductListSource.bigDiscounts,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 380),
+                              child: Column(
+                                children: [
+                                  SectionHeader(
+                                    title: l10n.brands,
+                                    actionText: l10n.viewMore,
+                                    onPressed:
+                                        () =>
+                                            HomeNavigation.openBrands(context),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (brands.isEmpty)
+                                    HomeSectionEmpty(
+                                      message: noBrandsMessage,
+                                      height: 174,
+                                      iconSize: 48,
+                                      padding: EdgeInsets.zero,
+                                    )
+                                  else
+                                    HomeBrandsRow(brands: brands),
+                                ],
+                              ),
+                            ),
+                            if (middleBanners.isNotEmpty) ...[
+                              const SizedBox(height: 22),
+                              _RiseIn(
+                                delay: const Duration(milliseconds: 460),
+                                child: HomeBanner(banners: middleBanners),
+                              ),
+                            ],
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 540),
+                              child: Column(
+                                children: [
+                                  SectionHeader(
+                                    title: l10n.shopByProblem,
+                                    actionText: l10n.viewMore,
+                                    onPressed:
+                                        () => HomeNavigation.openProblems(
+                                          context,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (problems.isEmpty)
+                                    HomeSectionEmpty(
+                                      message: noProblemsMessage,
+                                      height: 154,
+                                      iconSize: 48,
+                                      padding: EdgeInsets.zero,
+                                    )
+                                  else
+                                    HomeProblemsRow(problems: problems),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 620),
+                              child: _ProductBlock(
+                                title: l10n.bestSellingProducts,
+                                actionText: l10n.viewMore,
+                                products: bestSelling,
+                                onPressed:
+                                    () => HomeNavigation.openList(
+                                      context,
+                                      title: l10n.bestSellingProducts,
+                                      products: bestSelling,
+                                      source:
+                                          HomeProductListSource.bestSelling,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 700),
+                              child: _ProductBlock(
+                                title: l10n.newArrival,
+                                actionText: l10n.viewMore,
                                 products: latestProducts,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 300),
-                          child: _ProductBlock(
-                            title: l10n.bigDiscounts,
-                            showFire: true,
-                            actionText: l10n.viewMore,
-                            products: discounts,
-                            onPressed:
-                                () => HomeNavigation.openList(
-                                  context,
-                                  title: l10n.bigDiscounts,
-                                  products: discounts,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 380),
-                          child: Column(
-                            children: [
-                              SectionHeader(
-                                title: l10n.brands,
-                                actionText: l10n.viewMore,
                                 onPressed:
-                                    () => HomeNavigation.openBrands(context),
+                                    () => HomeNavigation.openList(
+                                      context,
+                                      title: l10n.newArrival,
+                                      products: latestProducts,
+                                      source: HomeProductListSource.newArrival,
+                                    ),
                               ),
-                              const SizedBox(height: 8),
-                              HomeBrandsRow(brands: _brands(state)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 460),
-                          child: HomeBanner(banners: _banners(state)),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 540),
-                          child: Column(
-                            children: [
-                              SectionHeader(
-                                title: l10n.shopByProblem,
+                            ),
+                            const SizedBox(height: 22),
+                            _RiseIn(
+                              delay: const Duration(milliseconds: 780),
+                              child: _ProductBlock(
+                                title: l10n.specialPackages,
                                 actionText: l10n.viewMore,
+                                products: specialPackages,
                                 onPressed:
-                                    () => HomeNavigation.openProblems(context),
+                                    () => HomeNavigation.openList(
+                                      context,
+                                      title: l10n.specialPackages,
+                                      products: specialPackages,
+                                      source:
+                                          HomeProductListSource.specialPackages,
+                                    ),
                               ),
-                              const SizedBox(height: 8),
-                              HomeProblemsRow(problems: _healthIssues(state)),
+                            ),
+                            if (bottomBanners.isNotEmpty) ...[
+                              const SizedBox(height: 22),
+                              _RiseIn(
+                                delay: const Duration(milliseconds: 860),
+                                child: HomeBanner(banners: bottomBanners),
+                              ),
                             ],
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 620),
-                          child: _ProductBlock(
-                            title: l10n.bestSellingProducts,
-                            actionText: l10n.viewMore,
-                            products: bestSelling,
-                            onPressed:
-                                () => HomeNavigation.openList(
-                                  context,
-                                  title: l10n.bestSellingProducts,
-                                  products: bestSelling,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 700),
-                          child: _ProductBlock(
-                            title: l10n.newArrival,
-                            actionText: l10n.viewMore,
-                            products: latestProducts,
-                            onPressed:
-                                () => HomeNavigation.openList(
-                                  context,
-                                  title: l10n.newArrival,
-                                  products: latestProducts,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _RiseIn(
-                          delay: const Duration(milliseconds: 780),
-                          child: _ProductBlock(
-                            title: l10n.specialPackages,
-                            actionText: l10n.viewMore,
-                            products: specialPackages,
-                            onPressed:
-                                () => HomeNavigation.openList(
-                                  context,
-                                  title: l10n.specialPackages,
-                                  products: specialPackages,
-                                ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -297,19 +404,6 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 }
-
-List<HomeDemoBanner> _banners(HomeState state) =>
-    state.banners?.data
-        ?.map(
-          (banner) => HomeDemoBanner(
-            titleAr: banner.title ?? '',
-            titleEn: banner.title ?? '',
-            imageUrl: banner.imageUrl ?? banner.image ?? '',
-            link: banner.link,
-          ),
-        )
-        .toList() ??
-    const [];
 
 List<HomeDemoChip> _categoryChips(HomeState state) =>
     state.categories?.data

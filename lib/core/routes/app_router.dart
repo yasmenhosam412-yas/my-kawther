@@ -176,7 +176,7 @@ class RouteGenerator {
         return _material(CheckOutSuccessView(order: order), settings);
 
       case Routes.categories:
-        return _material(const CategoriesView(), settings);
+        return _material(const CategoriesView(showBanner: true), settings);
 
       /// Dose
       case Routes.dose:
